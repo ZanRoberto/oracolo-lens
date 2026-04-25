@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capsule Manager · Albaconsulting Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,600;0,900;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #08080f;
+  --deep: #0f0f1a;
+  --surface: #141420;
+  --surface2: #1c1c2e;
+  --rim: #2a2a40;
+  --rim2: #383858;
+  --viola: #7c5cbf;
+  --viola-l: #a882ff;
+  --viola-glow: rgba(124,92,191,0.4);
+  --gold: #c9a84c;
+  --gold-dim: #7a6020;
+  --gold-glow: rgba(201,168,76,0.3);
+  --green: #2dba72;
+  --green-dim: #1a6b42;
+  --red: #e05252;
+  --red-dim: #7a2424;
+  --text: #e8e6f0;
+  --text2: #9896b0;
+  --text3: #4a4860;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRAIN OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ── HEADER ── */
+.header {
+  position: relative;
+  z-index: 10;
+  padding: 2.5rem 3rem 2rem;
+  border-bottom: 1px solid var(--rim);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 2rem;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 3rem;
+  width: 80px;
+  height: 2px;
+  background: var(--viola-l);
+}
+
+.header-eyebrow {
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  color: var(--viola-l);
+  margin-bottom: 0.6rem;
+}
+
+.header-title {
+  font-family: 'Bodoni Moda', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.header-title em {
+  font-style: italic;
+  color: var(--gold);
+}
+
+.header-right { text-align: right; }
+
+.tier-display {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.tier-label {
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text3);
+}
+
+.tier-name {
+  font-family: 'Bodoni Moda', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+.tier-price {
+  font-size: 0.55rem;
+  color: var(--text2);
+}
+
+/* ── LAYOUT ── */
+.layout {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 0;
+  min-height: calc(100vh - 120px);
+}
+
+/* ── CAPSULE GRID ── */
+.capsule-grid {
+  padding: 2rem 3rem;
+  border-right: 1px solid var(--rim);
+}
+
+.category-block {
+  margin-bottom: 2.5rem;
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rim);
+}
+
+.cat-num {
+  font-family: 'Bodoni Moda', serif;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--viola-l);
+  opacity: 0.6;
+  min-width: 24px;
+}
+
+.cat-name {
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--text2);
+}
+
+.cat-count {
+  margin-left: auto;
+  font-size: 0.48rem;
+  color: var(--text3);
+}
+
+.capsules-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+/* ── SINGOLA CAPSULA ── */
+.capsule {
+  background: var(--surface);
+  border: 1px solid var(--rim);
+  border-radius: 6px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.capsule::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--rim2);
+  transition: all 0.25s;
+}
+
+.capsule:hover {
+  border-color: var(--rim2);
+  transform: translateY(-1px);
+}
+
+.capsule.active {
+  border-color: var(--viola);
+  background: rgba(124,92,191,0.08);
+}
+
+.capsule.active::before {
+  background: var(--viola-l);
+  box-shadow: 0 0 12px var(--viola-glow);
+}
+
+.capsule.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.capsule.locked:hover { transform: none; }
+
+.capsule-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.6rem;
+}
+
+.capsule-id {
+  font-size: 0.45rem;
+  color: var(--text3);
+  font-family: 'Space Mono', monospace;
+}
+
+.capsule-toggle {
+  width: 28px; height: 14px;
+  border-radius: 7px;
+  background: var(--rim2);
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.capsule-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: all 0.2s;
+}
+
+.capsule.active .capsule-toggle {
+  background: var(--viola);
+}
+
+.capsule.active .capsule-toggle::after {
+  left: 16px;
+  background: #fff;
+  box-shadow: 0 0 6px var(--viola-glow);
+}
+
+.capsule.locked .capsule-toggle {
+  background: var(--rim);
+}
+
+.capsule-icon {
+  font-size: 1.2rem;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.capsule-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.capsule.active .capsule-name { color: var(--viola-l); }
+
+.capsule-desc {
+  font-size: 0.52rem;
+  color: var(--text3);
+  line-height: 1.6;
+}
+
+.capsule-tier {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.42rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-radius: 2px;
+}
+
+.tier-base { background: rgba(45,186,114,0.12); color: var(--green); border: 1px solid var(--green-dim); }
+.tier-pro { background: rgba(124,92,191,0.12); color: var(--viola-l); border: 1px solid var(--viola); }
+.tier-intel { background: rgba(201,168,76,0.12); color: var(--gold); border: 1px solid var(--gold-dim); }
+
+.lock-icon {
+  position: absolute;
+  top: 0.7rem; right: 0.7rem;
+  font-size: 0.7rem;
+  color: var(--text3);
+}
+
+/* ── SIDEBAR DESTRA ── */
+.sidebar-right {
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+/* Piano attivo */
+.plan-card {
+  background: var(--surface2);
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.plan-card-header {
+  background: linear-gradient(135deg, var(--viola) 0%, #3d2060 100%);
+  padding: 1rem 1.2rem;
+}
+
+.plan-card-label {
+  font-size: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 0.2rem;
+}
+
+.plan-card-name {
+  font-family: 'Bodoni Moda', serif;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.plan-card-body { padding: 1rem 1.2rem; }
+
+.plan-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--rim);
+  font-size: 0.55rem;
+}
+.plan-stat:last-child { border-bottom: none; }
+.plan-stat-label { color: var(--text3); }
+.plan-stat-val { font-weight: 700; }
+.stat-active { color: var(--green); }
+.stat-total { color: var(--text2); }
+.stat-price { color: var(--gold); }
+
+/* Tier selector */
+.tier-selector {
+  background: var(--surface2);
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tier-selector-header {
+  padding: 0.7rem 1.2rem;
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text3);
+  border-bottom: 1px solid var(--rim);
+}
+
+.tier-option {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--rim);
+  transition: all 0.15s;
+}
+
+.tier-option:last-child { border-bottom: none; }
+.tier-option:hover { background: rgba(255,255,255,0.02); }
+.tier-option.selected { background: rgba(124,92,191,0.1); }
+
+.tier-opt-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--rim2);
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.tier-option.selected .tier-opt-dot {
+  background: var(--viola-l);
+  border-color: var(--viola-l);
+  box-shadow: 0 0 8px var(--viola-glow);
+}
+
+.tier-opt-info { flex: 1; }
+.tier-opt-name { font-size: 0.6rem; font-weight: 700; color: var(--text); }
+.tier-opt-desc { font-size: 0.5rem; color: var(--text3); margin-top: 0.1rem; }
+.tier-opt-price { font-size: 0.65rem; color: var(--gold); font-weight: 700; text-align: right; }
+.tier-opt-period { font-size: 0.42rem; color: var(--text3); }
+
+/* Capsule attive list */
+.active-list {
+  background: var(--surface2);
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.active-list-header {
+  padding: 0.7rem 1.2rem;
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text3);
+  border-bottom: 1px solid var(--rim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.active-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1.2rem;
+  border-bottom: 1px solid var(--rim);
+  font-size: 0.52rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+
+.active-item:last-child { border-bottom: none; }
+.active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--viola-l); flex-shrink: 0; box-shadow: 0 0 6px var(--viola-glow); }
+.active-name { color: var(--text2); flex: 1; }
+.active-id { color: var(--text3); font-size: 0.45rem; }
+
+/* CTA */
+.cta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.btn-primary {
+  padding: 0.75rem;
+  background: var(--viola);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  box-shadow: 0 4px 20px var(--viola-glow);
+}
+
+.btn-primary:hover { background: #6040a8; box-shadow: 0 6px 28px var(--viola-glow); transform: translateY(-1px); }
+
+.btn-secondary {
+  padding: 0.6rem;
+  background: transparent;
+  color: var(--text3);
+  border: 1px solid var(--rim2);
+  border-radius: 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.btn-secondary:hover { border-color: var(--viola); color: var(--viola-l); }
+
+/* Notifica save */
+.save-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2);
+  border: 1px solid var(--viola);
+  border-radius: 4px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.55rem;
+  color: var(--viola-l);
+  z-index: 100;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--viola); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-eyebrow">Albaconsulting S.r.l. · Intelligence Platform</div>
+    <div class="header-title">Gestione <em>Capsule</em></div>
+  </div>
+  <div class="header-right">
+    <div class="tier-display">
+      <div class="tier-label">Piano attivo</div>
+      <div class="tier-name" id="hdr-tier-name">Professional</div>
+      <div class="tier-price" id="hdr-tier-price">€ 290 / mese</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- GRIGLIA CAPSULE -->
+  <div class="capsule-grid" id="capsule-grid"></div>
+
+  <!-- SIDEBAR DESTRA -->
+  <div class="sidebar-right">
+
+    <!-- Piano attivo -->
+    <div class="plan-card">
+      <div class="plan-card-header">
+        <div class="plan-card-label">Configurazione attiva</div>
+        <div class="plan-card-name" id="plan-name">Professional</div>
+      </div>
+      <div class="plan-card-body">
+        <div class="plan-stat">
+          <span class="plan-stat-label">Capsule attive</span>
+          <span class="plan-stat-val stat-active" id="stat-active">0</span>
+        </div>
+        <div class="plan-stat">
+          <span class="plan-stat-label">Capsule disponibili</span>
+          <span class="plan-stat-val stat-total" id="stat-available">0</span>
+        </div>
+        <div class="plan-stat">
+          <span class="plan-stat-label">Capsule bloccate</span>
+          <span class="plan-stat-val" style="color:var(--text3)" id="stat-locked">0</span>
+        </div>
+        <div class="plan-stat">
+          <span class="plan-stat-label">Prezzo mensile</span>
+          <span class="plan-stat-val stat-price" id="stat-price">€ 290</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selettore tier -->
+    <div class="tier-selector">
+      <div class="tier-selector-header">Cambia piano</div>
+      <div class="tier-option selected" id="tier-base" onclick="setTier('base')">
+        <div class="tier-opt-dot"></div>
+        <div class="tier-opt-info">
+          <div class="tier-opt-name">Base</div>
+          <div class="tier-opt-desc">Indicatori classici · Anomalie · Benchmark</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tier-opt-price">€ 89</div>
+          <div class="tier-opt-period">/mese</div>
+        </div>
+      </div>
+      <div class="tier-option" id="tier-pro" onclick="setTier('pro')">
+        <div class="tier-opt-dot"></div>
+        <div class="tier-opt-info">
+          <div class="tier-opt-name">Professional</div>
+          <div class="tier-opt-desc">+ Altman Z-Score · Budget · Stress Test · AI</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tier-opt-price">€ 290</div>
+          <div class="tier-opt-period">/mese</div>
+        </div>
+      </div>
+      <div class="tier-option" id="tier-intel" onclick="setTier('intel')">
+        <div class="tier-opt-dot"></div>
+        <div class="tier-opt-info">
+          <div class="tier-opt-name">Intelligence</div>
+          <div class="tier-opt-desc">Tutto · Capsule memoria · API access</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tier-opt-price">€ 690</div>
+          <div class="tier-opt-period">/mese</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista capsule attive -->
+    <div class="active-list">
+      <div class="active-list-header">
+        <span>Capsule attive</span>
+        <span id="active-count" style="color:var(--viola-l)">0</span>
+      </div>
+      <div id="active-list-body"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-block">
+      <button class="btn-primary" onclick="saveConfig()">◆ Salva Configurazione</button>
+      <button class="btn-secondary" onclick="resetToTier()">↺ Ripristina piano</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="save-toast" id="save-toast">✓ Configurazione salvata</div>
+
+<script>
+// ── DEFINIZIONE CAPSULE ─────────────────────────────────────────
+const CAPSULE_DEF = [
+  // ANALISI BASE
+  { id:'C01', cat:'analisi-base', icon:'📊', name:'Indicatori classici', desc:'EBITDA, margini, current ratio, DSO, ROI — calcolo e visualizzazione', tier:'base', defaultOn:true },
+  { id:'C02', cat:'analisi-base', icon:'🔍', name:'Rilevatore anomalie', desc:'Detector automatico di 8 pattern di deterioramento finanziario', tier:'base', defaultOn:true },
+  { id:'C03', cat:'analisi-base', icon:'📐', name:'Benchmark settoriale', desc:'Confronto con medie ATECO italiane — Mediobanca / Banca d\'Italia', tier:'base', defaultOn:true },
+  // ANALISI AVANZATA
+  { id:'C04', cat:'analisi-avanzata', icon:'⚡', name:'Altman Z-Score PMI', desc:'Modello predittivo di default validato su PMI italiane — probabilità insolvenza', tier:'pro', defaultOn:true },
+  { id:'C05', cat:'analisi-avanzata', icon:'🎯', name:'Modello default B.I.', desc:'Probability of Default basato su metodologia Banca d\'Italia 2023', tier:'pro', defaultOn:false },
+  { id:'C06', cat:'analisi-avanzata', icon:'🔮', name:'Score predittivo 12m', desc:'Proiezione probabilistica del rating a 12 mesi su 5 fattori', tier:'pro', defaultOn:true },
+  { id:'C07', cat:'analisi-avanzata', icon:'🧬', name:'Analisi qualità utili', desc:'Distingue utili strutturali da componenti straordinarie o fiscali', tier:'pro', defaultOn:false },
+  // BUDGET E PIANIFICAZIONE
+  { id:'C08', cat:'budget', icon:'📈', name:'Budget economico', desc:'CE previsionale 24 mesi con tendenza storica e stagionalità', tier:'pro', defaultOn:true },
+  { id:'C09', cat:'budget', icon:'💶', name:'Budget finanziario', desc:'Cash flow mensile con IVA, mutui, dilazioni clienti/fornitori', tier:'pro', defaultOn:true },
+  { id:'C10', cat:'budget', icon:'⚡', name:'Simulatore stress', desc:'5 variabili di scenario in tempo reale — recessione, tassi, insoluti', tier:'pro', defaultOn:true },
+  { id:'C11', cat:'budget', icon:'📉', name:'Grafici e tendenze', desc:'Visualizzazione storica + budget su base pluriennale', tier:'base', defaultOn:true },
+  // AI
+  { id:'C12', cat:'ai', icon:'◆', name:'Narratore', desc:'Lettura qualitativa del contesto attivo — interpreta oltre i numeri', tier:'pro', defaultOn:true },
+  { id:'C13', cat:'ai', icon:'◈', name:'Superrisponditore', desc:'Dialogo autonomo Narratore→Domanda→Risposta su ogni schermata', tier:'pro', defaultOn:true },
+  { id:'C14', cat:'ai', icon:'🧠', name:'Memoria sessioni', desc:'Sedimentazione di narrazioni e risposte nel database per azienda', tier:'intel', defaultOn:false },
+  { id:'C15', cat:'ai', icon:'💊', name:'Capsule predittive', desc:'Le capsule imparano dai pattern aziendali e si autoaggiornano', tier:'intel', defaultOn:false },
+  // OUTPUT
+  { id:'C16', cat:'output', icon:'📋', name:'Due Diligence completa', desc:'Report approfondito 6 sezioni con Superrisponditore integrato', tier:'pro', defaultOn:true },
+  { id:'C17', cat:'output', icon:'⚡', name:'Executive Summary', desc:'Sintesi 1 pagina per CDA — solo elementi decisionali', tier:'pro', defaultOn:true },
+  { id:'C18', cat:'output', icon:'💳', name:'Parere sul credito', desc:'Limite consigliato, condizioni, clausole — formato bancario', tier:'pro', defaultOn:false },
+  { id:'C19', cat:'output', icon:'🔗', name:'API access', desc:'Endpoint REST per integrazione con sistemi terzi (CRM, ERP)', tier:'intel', defaultOn:false },
+];
+
+const CATEGORIES = [
+  { id:'analisi-base',    num:'01', name:'Analisi di Base' },
+  { id:'analisi-avanzata',num:'02', name:'Analisi Avanzata' },
+  { id:'budget',          num:'03', name:'Budget e Pianificazione' },
+  { id:'ai',              num:'04', name:'Intelligenza Artificiale' },
+  { id:'output',          num:'05', name:'Output e Report' },
+];
+
+const TIERS = {
+  base:  { name:'Base',         price:89,  capsules:['base'] },
+  pro:   { name:'Professional', price:290, capsules:['base','pro'] },
+  intel: { name:'Intelligence', price:690, capsules:['base','pro','intel'] },
+};
+
+// ── STATO ───────────────────────────────────────────────────────
+let currentTier = 'pro';
+let activeState = {}; // capsuleId → true/false
+
+function initState() {
+  CAPSULE_DEF.forEach(c => {
+    const allowed = TIERS[currentTier].capsules.includes(c.tier);
+    activeState[c.id] = allowed && c.defaultOn;
+  });
+}
+
+// ── RENDER ──────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('capsule-grid');
+  grid.innerHTML = '';
+
+  CATEGORIES.forEach(cat => {
+    const capsules = CAPSULE_DEF.filter(c => c.cat === cat.id);
+    const block = document.createElement('div');
+    block.className = 'category-block';
+
+    const active = capsules.filter(c => activeState[c.id]).length;
+    block.innerHTML = `
+      <div class="cat-header">
+        <span class="cat-num">${cat.num}</span>
+        <span class="cat-name">${cat.name}</span>
+        <span class="cat-count">${active}/${capsules.length} attive</span>
+      </div>
+      <div class="capsules-row" id="row-${cat.id}"></div>`;
+
+    grid.appendChild(block);
+
+    const row = block.querySelector(`#row-${cat.id}`);
+    capsules.forEach(c => {
+      const allowed = TIERS[currentTier].capsules.includes(c.tier);
+      const isActive = activeState[c.id];
+      const div = document.createElement('div');
+      div.className = `capsule${isActive?' active':''}${!allowed?' locked':''}`;
+      div.id = `cap-${c.id}`;
+      div.innerHTML = `
+        ${!allowed ? '<span class="lock-icon">🔒</span>' : ''}
+        <div class="capsule-top">
+          <span class="capsule-id">${c.id}</span>
+          <div class="capsule-toggle"></div>
+        </div>
+        <span class="capsule-icon">${c.icon}</span>
+        <div class="capsule-name">${c.name}</div>
+        <div class="capsule-desc">${c.desc}</div>
+        <span class="capsule-tier tier-${c.tier}">${c.tier === 'base' ? 'Base' : c.tier === 'pro' ? 'Pro' : 'Intelligence'}</span>`;
+
+      if(allowed) div.onclick = () => toggleCapsule(c.id);
+      row.appendChild(div);
+    });
+  });
+
+  updateStats();
+  updateActiveList();
+}
+
+function toggleCapsule(id) {
+  activeState[id] = !activeState[id];
+  const el = document.getElementById('cap-'+id);
+  if(el) el.classList.toggle('active', activeState[id]);
+  updateStats();
+  updateActiveList();
+  // Aggiorna contatore categoria
+  const c = CAPSULE_DEF.find(x => x.id === id);
+  if(c) {
+    const cat = CATEGORIES.find(x => x.id === c.cat);
+    if(cat) {
+      const catCapsules = CAPSULE_DEF.filter(x => x.cat === c.cat);
+      const active = catCapsules.filter(x => activeState[x.id]).length;
+      const header = document.querySelector(`#row-${c.cat}`)?.parentElement?.querySelector('.cat-count');
+      if(header) header.textContent = `${active}/${catCapsules.length} attive`;
+    }
+  }
+}
+
+function updateStats() {
+  const allowed = CAPSULE_DEF.filter(c => TIERS[currentTier].capsules.includes(c.tier));
+  const active = CAPSULE_DEF.filter(c => activeState[c.id]);
+  const locked = CAPSULE_DEF.length - allowed.length;
+
+  document.getElementById('stat-active').textContent = active.length;
+  document.getElementById('stat-available').textContent = allowed.length;
+  document.getElementById('stat-locked').textContent = locked;
+  document.getElementById('stat-price').textContent = '€ ' + TIERS[currentTier].price;
+  document.getElementById('active-count').textContent = active.length;
+}
+
+function updateActiveList() {
+  const body = document.getElementById('active-list-body');
+  const active = CAPSULE_DEF.filter(c => activeState[c.id]);
+  body.innerHTML = active.map(c => `
+    <div class="active-item">
+      <div class="active-dot"></div>
+      <span class="active-name">${c.name}</span>
+      <span class="active-id">${c.id}</span>
+    </div>`).join('') || '<div style="padding:1rem 1.2rem;font-size:0.52rem;color:var(--text3)">Nessuna capsula attiva</div>';
+}
+
+// ── TIER ────────────────────────────────────────────────────────
+function setTier(tier) {
+  currentTier = tier;
+
+  // Aggiorna UI tier selector
+  document.querySelectorAll('.tier-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('tier-'+tier).classList.add('selected');
+
+  // Aggiorna header
+  document.getElementById('hdr-tier-name').textContent = TIERS[tier].name;
+  document.getElementById('hdr-tier-price').textContent = '€ ' + TIERS[tier].price + ' / mese';
+  document.getElementById('plan-name').textContent = TIERS[tier].name;
+
+  // Blocca/sblocca capsule
+  CAPSULE_DEF.forEach(c => {
+    const allowed = TIERS[tier].capsules.includes(c.tier);
+    if(!allowed) activeState[c.id] = false;
+    const el = document.getElementById('cap-'+c.id);
+    if(el) {
+      el.classList.toggle('locked', !allowed);
+      el.classList.toggle('active', !!activeState[c.id]);
+      el.onclick = allowed ? () => toggleCapsule(c.id) : null;
+      // Aggiorna lock icon
+      const lock = el.querySelector('.lock-icon');
+      if(lock) lock.style.display = allowed ? 'none' : 'block';
+    }
+  });
+
+  updateStats();
+  updateActiveList();
+}
+
+function resetToTier() {
+  CAPSULE_DEF.forEach(c => {
+    const allowed = TIERS[currentTier].capsules.includes(c.tier);
+    activeState[c.id] = allowed && c.defaultOn;
+    const el = document.getElementById('cap-'+c.id);
+    if(el) el.classList.toggle('active', !!activeState[c.id]);
+  });
+  updateStats();
+  updateActiveList();
+}
+
+function saveConfig() {
+  // Salva in localStorage per ora
+  const config = { tier: currentTier, active: activeState, savedAt: new Date().toISOString() };
+  try { localStorage.setItem('capsule_config', JSON.stringify(config)); } catch(e) {}
+
+  // Toast
+  const toast = document.getElementById('save-toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── INIT ────────────────────────────────────────────────────────
+initState();
+renderGrid();
+setTier('pro');
+</script>
+</body>
+</html>
