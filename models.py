@@ -1,50 +1,71 @@
-"""
-Oracolo Lens — Piattaforma Intelligence Finanziaria per PMI Italiane
-© 2025 Albaconsulting S.r.l. — All rights reserved.
-Software proprietario. Uso consentito solo su licenza contrattuale.
-"""
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timezone
+import json, os, hashlib
 
-from flask import Flask, send_from_directory, jsonify
-from flask_cors import CORS
-from config import Config
-from models import db
-import os
+db = SQLAlchemy()
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
-app.config.from_object(Config)
+def now_utc():
+    return datetime.now(timezone.utc)
 
-CORS(app, resources={r"/api/*": {"origins": "*"}})
-db.init_app(app)
+class User(db.Model):
+    __tablename__ = 'users'
+    id             = db.Column(db.Integer, primary_key=True)
+    email          = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash  = db.Column(db.String(255), nullable=False)
+    nome           = db.Column(db.String(255))
+    societa        = db.Column(db.String(255))
+    piano          = db.Column(db.String(50), default='base')
+    piano_attivo   = db.Column(db.Boolean, default=True)
+    piano_scadenza = db.Column(db.DateTime)
+    is_admin       = db.Column(db.Boolean, default=False)
+    created_at     = db.Column(db.DateTime, default=now_utc)
+    updated_at     = db.Column(db.DateTime, default=now_utc, onupdate=now_utc)
+    clients        = db.relationship('Client', backref='owner', lazy=True, cascade='all, delete-orphan')
+    capsule_configs= db.relationship('CapsuleConfig', backref='owner', lazy=True, cascade='all, delete-orphan')
+    ai_sessions    = db.relationship('AISession', backref='owner', lazy=True, cascade='all, delete-orphan')
 
-# ── Routes ──────────────────────────────────────────────────────────────────
-from routes.auth     import auth_bp
-from routes.clients  import clients_bp
-from routes.capsules import capsules_bp
-from routes.sessions import sessions_bp
+    def set_password(self, password):
+        salt = os.urandom(32).hex()
+        h    = hashlib.sha256((salt + password).encode()).hexdigest()
+        self.password_hash = f"{salt}${h}"
 
-app.register_blueprint(auth_bp,     url_prefix='/api/auth')
-app.register_blueprint(clients_bp,  url_prefix='/api/clients')
-app.register_blueprint(capsules_bp, url_prefix='/api/capsules')
-app.register_blueprint(sessions_bp, url_prefix='/api/sessions')
+    def check_password(self, password):
+        try:
+            salt, h = self.password_hash.split('$', 1)
+            return hashlib.sha256((salt + password).encode()).hexdigest() == h
+        except:
+            return False
 
-# ── Serve frontend ───────────────────────────────────────────────────────────
-@app.route('/')
-def index():
-    return send_from_directory('static', 'hub.html')
+    def to_dict(self):
+        return {'id': self.id, 'email': self.email, 'nome': self.nome,
+                'societa': self.societa, 'piano': self.piano,
+                'piano_attivo': self.piano_attivo, 'is_admin': self.is_admin}
 
-@app.route('/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
+class Client(db.Model):
+    __tablename__ = 'clients'
+    id             = db.Column(db.Integer, primary_key=True)
+    user_id        = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    nome           = db.Column(db.String(255), nullable=False)
+    piva           = db.Column(db.String(20))
+    ateco          = db.Column(db.String(20))
+    settore        = db.Column(db.String(100))
+    citta          = db.Column(db.String(100))
+    rating         = db.Column(db.String(10))
+    rating_score   = db.Column(db.Integer)
+    dati_finanziari= db.Column(db.Text)
+    attivo         = db.Column(db.Boolean, default=True)
+    created_at     = db.Column(db.DateTime, default=now_utc)
+    updated_at     = db.Column(db.DateTime, default=now_utc, onupdate=now_utc)
+    capsule_config = db.relationship('CapsuleConfig', backref='client', lazy=True, uselist=False)
+    ai_sessions    = db.relationship('AISession', backref='client', lazy=True)
 
-# ── Health check (Render lo usa) ─────────────────────────────────────────────
-@app.route('/health')
-def health():
-    return jsonify({'status': 'ok', 'app': 'oracolo-lens'}), 200
+    def get_dati(self):
+        try: return json.loads(self.dati_finanziari) if self.dati_finanziari else []
+        except: return []
 
-# ── Init DB ──────────────────────────────────────────────────────────────────
-with app.app_context():
-    db.create_all()
+    def set_dati(self, data):
+        self.dati_finanziari = json.dumps(data, ensure_ascii=False)
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    def to_dict(self):
+        return {'id': self.id, 'nome': self.nome, 'piva': self.piva,
+                'ateco': self.ateco, 'settore': self.settore, 'citta': self.citta,
