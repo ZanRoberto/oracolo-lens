@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Albaconsulting S.r.l. · Intelligence Finanziaria</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --viola: #5b3d8f;
+  --viola-dim: #3d2860;
+  --viola-l: #9b7fd4;
+  --viola-bg: #f2eefb;
+  --gold: #b8942a;
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --border: #dde0ee;
+  --text: #1a1a2e;
+  --text2: #4a4a6a;
+  --text3: #8888aa;
+  --red: #c0392b;
+  --green: #1e8449;
+  --sidebar-w: 220px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  height: 48px;
+  background: var(--viola);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1.2rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(91,61,143,0.35);
+  z-index: 200;
+}
+
+.topbar-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+}
+
+.topbar-sub {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.topbar-right {
+  margin-left: auto;
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.4);
+  text-align: right;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-section:last-child { border-bottom: none; }
+
+.sidebar-label {
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text3);
+  padding: 0 1rem 0.5rem;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  color: var(--text2);
+  font-size: 0.62rem;
+  text-decoration: none;
+  user-select: none;
+}
+
+.nav-item:hover {
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-left-color: var(--viola-l);
+}
+
+.nav-item.active {
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-left-color: var(--viola);
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  background: var(--viola-bg);
+  color: var(--viola);
+  border: 1px solid var(--viola-l);
+  flex-shrink: 0;
+}
+
+/* ── CONTENT ── */
+.content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── PANNELLO HOME ── */
+.home-panel {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 2rem;
+  display: none;
+}
+
+.home-panel.active { display: block; }
+
+.home-hero {
+  text-align: center;
+  padding: 3rem 1rem 2.5rem;
+}
+
+.home-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 300;
+  color: var(--viola);
+  margin-bottom: 0.5rem;
+}
+
+.home-sub {
+  font-size: 0.62rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto 2rem;
+}
+
+.module-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.module-card:hover {
+  border-color: var(--viola-l);
+  box-shadow: 0 4px 20px rgba(91,61,143,0.12);
+  transform: translateY(-2px);
+}
+
+.module-card-icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.module-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  color: var(--viola);
+  margin-bottom: 0.3rem;
+}
+
+.module-card-desc {
+  font-size: 0.58rem;
+  color: var(--text3);
+  line-height: 1.7;
+}
+
+.module-card-items {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.module-tag {
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
+/* ── IFRAME ── */
+.iframe-panel {
+  width: 100%;
+  height: 100%;
+  display: none;
+  flex-direction: column;
+}
+
+.iframe-panel.active { display: flex; }
+
+.iframe-topbar {
+  height: 36px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  gap: 0.8rem;
+  flex-shrink: 0;
+}
+
+.iframe-breadcrumb {
+  font-size: 0.58rem;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.iframe-breadcrumb span { color: var(--text3); }
+.iframe-breadcrumb strong { color: var(--viola); }
+
+.iframe-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.iframe-btn {
+  padding: 0.25rem 0.7rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text3);
+  transition: all 0.15s;
+}
+
+.iframe-btn:hover { border-color: var(--viola-l); color: var(--viola); background: var(--viola-bg); }
+.iframe-btn.primary { background: var(--viola); color: #fff; border-color: var(--viola); }
+.iframe-btn.primary:hover { background: var(--viola-dim); }
+
+.module-iframe {
+  flex: 1;
+  border: none;
+  width: 100%;
+}
+
+/* Loading */
+.iframe-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.65rem;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--viola);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 0.8rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--viola-l); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">◆ Albaconsulting S.r.l.</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-sub">Piattaforma Finanziaria Integrata</div>
+  <div class="topbar-right">
+    <div id="clock"></div>
+    <div style="margin-top:0.1rem">Riservato · Uso Interno</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="nav-item active" onclick="showModule('home')">
+        <span class="nav-icon">⌂</span>
+        <span>Pannello Principale</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Portafoglio Clienti</div>
+      <div class="nav-item" onclick="showModule('portafoglio')">
+        <span class="nav-icon">📊</span>
+        <span>Portafoglio</span>
+        <span class="nav-badge">2 az.</span>
+      </div>
+      <div class="nav-item" onclick="showModule('predittivo')">
+        <span class="nav-icon">🔮</span>
+        <span>Predittivo 12 Mesi</span>
+      </div>
+      <div class="nav-item" onclick="showModule('stress')">
+        <span class="nav-icon">⚡</span>
+        <span>Simulatore Stress</span>
+      </div>
+      <div class="nav-item" onclick="showModule('alert')">
+        <span class="nav-icon">🔔</span>
+        <span>Alert Precursori</span>
+      </div>
+      <div class="nav-item" onclick="showModule('report')">
+        <span class="nav-icon">📋</span>
+        <span>Lettera Due Diligence</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Analisi Singola Azienda</div>
+      <div class="nav-item" onclick="showModule('duediligence')">
+        <span class="nav-icon">🔍</span>
+        <span>Due Diligence</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Viplastic SRL</div>
+      <div class="nav-item" onclick="showModule('budget-ce')">
+        <span class="nav-icon">📈</span>
+        <span>Conto Economico</span>
+      </div>
+      <div class="nav-item" onclick="showModule('budget-mensile')">
+        <span class="nav-icon">📅</span>
+        <span>Dettaglio Mensile</span>
+      </div>
+      <div class="nav-item" onclick="showModule('budget-fin')">
+        <span class="nav-icon">💶</span>
+        <span>Budget Finanziario</span>
+      </div>
+      <div class="nav-item" onclick="showModule('budget-grafici')">
+        <span class="nav-icon">📉</span>
+        <span>Grafici e Tendenze</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:auto;padding-top:0.8rem">
+      <div style="padding:0.8rem 1rem;font-size:0.52rem;color:var(--text3);line-height:1.7">
+        Base storica 2018–2022<br>
+        Budget 2025 (consuntivo)<br>
+        Budget 2026 (+12% base reale)<br>
+        <span style="color:var(--viola)">◆ Powered by AI</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content">
+
+    <!-- HOME -->
+    <div class="home-panel active" id="panel-home">
+      <div class="home-hero">
+        <div class="home-title">Albaconsulting S.r.l.</div>
+        <div class="home-sub">Piattaforma Finanziaria Integrata · Viplastic SRL</div>
+      </div>
+
+      <div class="modules-grid">
+
+        <div class="module-card" onclick="showModule('portafoglio')">
+          <div class="module-card-icon">📊</div>
+          <div class="module-card-title">Portafoglio Clienti</div>
+          <div class="module-card-desc">Gestione e monitoraggio del portafoglio con punteggio di rischio proprietario, alert e analisi comparativa.</div>
+          <div class="module-card-items">
+            <span class="module-tag">Portafoglio</span>
+            <span class="module-tag">Predittivo</span>
+            <span class="module-tag">Stress Test</span>
+            <span class="module-tag">Alert</span>
+            <span class="module-tag">Lettera DD</span>
+          </div>
+        </div>
+
+        <div class="module-card" onclick="showModule('duediligence')">
+          <div class="module-card-icon">🔍</div>
+          <div class="module-card-title">Due Diligence</div>
+          <div class="module-card-desc">Analisi approfondita singola azienda con Superrisponditore AI, anomalie, benchmark settoriale e raccomandazione operativa.</div>
+          <div class="module-card-items">
+            <span class="module-tag">RCS Tecnoimpianti</span>
+            <span class="module-tag">Viplastic</span>
+            <span class="module-tag">AI Analysis</span>
+          </div>
+        </div>
+
+        <div class="module-card" onclick="showModule('budget-fin')">
+          <div class="module-card-icon">💶</div>
+          <div class="module-card-title">Budget Viplastic</div>
+          <div class="module-card-desc">Budget economico e finanziario 2025–2026 con flussi di cassa mensili, IVA, mutuo impianti e liquidità progressiva.</div>
+          <div class="module-card-items">
+            <span class="module-tag">CE 2025–2026</span>
+            <span class="module-tag">Cash Flow</span>
+            <span class="module-tag">IVA 22%</span>
+            <span class="module-tag">Mutuo €50K/m</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Stats row -->
+      <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--viola)">2</div>
+          <div style="font-size:0.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-top:0.2rem">Aziende analizzate</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--viola)">24</div>
+          <div style="font-size:0.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-top:0.2rem">Mesi di budget</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--green)">5</div>
+          <div style="font-size:0.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-top:0.2rem">Anni storici</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--gold)">AI</div>
+          <div style="font-size:0.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-top:0.2rem">Superrisponditore</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- IFRAME PANELS -->
+    <!-- Platform Intelligence: portafoglio, predittivo, stress, alert, report -->
+    <div class="iframe-panel" id="panel-platform">
+      <div class="iframe-topbar">
+        <div class="iframe-breadcrumb">
+          <span onclick="showModule('home')" style="cursor:pointer">⌂</span>
+          <span>›</span>
+          <strong id="platform-breadcrumb">Portafoglio</strong>
+        </div>
+        <div class="iframe-actions">
+          <button class="iframe-btn" onclick="reloadFrame('frame-platform')">↺ Ricarica</button>
+          <button class="iframe-btn primary" onclick="openFull('platform_intelligence.html')">⤢ Apri separato</button>
+        </div>
+      </div>
+      <iframe id="frame-platform" class="module-iframe" src="" title="Portafoglio Intelligence"></iframe>
+    </div>
+
+    <!-- Due Diligence -->
+    <div class="iframe-panel" id="panel-duediligence">
+      <div class="iframe-topbar">
+        <div class="iframe-breadcrumb">
+          <span onclick="showModule('home')" style="cursor:pointer">⌂</span>
+          <span>›</span>
+          <strong>Due Diligence Finanziaria</strong>
+        </div>
+        <div class="iframe-actions">
+          <button class="iframe-btn" onclick="reloadFrame('frame-duediligence')">↺ Ricarica</button>
+          <button class="iframe-btn primary" onclick="openFull('due_diligence.html')">⤢ Apri separato</button>
+        </div>
+      </div>
+      <iframe id="frame-duediligence" class="module-iframe" src="" title="Due Diligence"></iframe>
+    </div>
+
+    <!-- Budget Viplastic -->
+    <div class="iframe-panel" id="panel-budget">
+      <div class="iframe-topbar">
+        <div class="iframe-breadcrumb">
+          <span onclick="showModule('home')" style="cursor:pointer">⌂</span>
+          <span>›</span>
+          <span>Viplastic SRL</span>
+          <span>›</span>
+          <strong id="budget-breadcrumb">Budget Finanziario</strong>
+        </div>
+        <div class="iframe-actions">
+          <button class="iframe-btn" onclick="reloadFrame('frame-budget')">↺ Ricarica</button>
+          <button class="iframe-btn primary" onclick="openFull('budget_viplastic_2025_2026.html')">⤢ Apri separato</button>
+        </div>
+      </div>
+      <iframe id="frame-budget" class="module-iframe" src="" title="Budget Viplastic 2025-2026"></iframe>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── MAPPA MODULI ───────────────────────────────────────────────────
+const MODULES = {
+  // Platform intelligence — ogni modulo carica con ?view= nell'URL
+  'portafoglio':  { panel:'platform', frame:'frame-platform', src:'platform_intelligence.html?view=portafoglio', breadcrumb:'Portafoglio Clienti' },
+  'predittivo':   { panel:'platform', frame:'frame-platform', src:'platform_intelligence.html?view=predittivo', breadcrumb:'Predittivo 12 Mesi' },
+  'stress':       { panel:'platform', frame:'frame-platform', src:'platform_intelligence.html?view=stress', breadcrumb:'Simulatore di Pressione' },
+  'alert':        { panel:'platform', frame:'frame-platform', src:'platform_intelligence.html?view=alert', breadcrumb:'Alert Precursori' },
+  'report':       { panel:'platform', frame:'frame-platform', src:'platform_intelligence.html?view=report', breadcrumb:'Lettera Due Diligence' },
+  // Due diligence
+  'duediligence': { panel:'duediligence', frame:'frame-duediligence', src:'due_diligence.html', breadcrumb:'Due Diligence Finanziaria' },
+  // Budget — ogni tab carica con ?view=
+  'budget-ce':      { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=ce', breadcrumb:'Conto Economico 2025–2026' },
+  'budget-mensile': { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=mensile', breadcrumb:'Dettaglio Mensile' },
+  'budget-fin':     { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=fin', breadcrumb:'Budget Finanziario' },
+  'budget-grafici': { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=grafici', breadcrumb:'Grafici e Tendenze' },
+};
+
+let currentModule = 'home';
+let loadedFrames = {};
+
+// ── NAVIGAZIONE ────────────────────────────────────────────────────
+function showModule(id) {
+  currentModule = id;
+
+  // Aggiorna sidebar
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const clicked = [...document.querySelectorAll('.nav-item')].find(el =>
+    el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+id+"'")
+  );
+  if(clicked) clicked.classList.add('active');
+
+  // Nascondi tutto
+  document.querySelectorAll('.home-panel, .iframe-panel').forEach(p => p.classList.remove('active'));
+
+  if(id === 'home') {
+    document.getElementById('panel-home').classList.add('active');
+    return;
+  }
+
+  const mod = MODULES[id];
+  if(!mod) return;
+
+  // Mostra panel corretto
+  document.getElementById('panel-'+mod.panel).classList.add('active');
+
+  // Aggiorna breadcrumb
+  const bc = document.getElementById(mod.panel+'-breadcrumb');
+  if(bc) bc.textContent = mod.breadcrumb;
+
+  // Carica iframe se non ancora caricato
+  const frame = document.getElementById(mod.frame);
+  // Ricarica sempre con il src corretto — il ?view= garantisce il tab giusto
+  frame.src = mod.src;
+  loadedFrames[mod.frame] = mod.src;
+}
+
+// ── NAVIGAZIONE TAB INTERNI ────────────────────────────────────────
+function navigateFrameTab(frameId, tab) {
+  try {
+    const frame = document.getElementById(frameId);
+    const doc = frame.contentDocument || frame.contentWindow.document;
+
+    // Platform intelligence — usa showView()
+    if(frameId === 'frame-platform') {
+      const fn = frame.contentWindow.showView;
+      if(fn) fn(tab);
+    }
+
+    // Budget — usa showTab()
+    if(frameId === 'frame-budget') {
+      const fn = frame.contentWindow.showTab;
+      if(fn) {
+        // Trova il pulsante corretto e simulane il click
+        const btns = doc.querySelectorAll('.tab');
+        const tabMap = { ce:0, mensile:1, fin:2, grafici:3 };
+        const idx = tabMap[tab];
+        if(btns[idx]) btns[idx].click();
+      }
+    }
+  } catch(e) {
+    // Cross-origin o non ancora pronto — ignora
+  }
+}
+
+function reloadFrame(frameId) {
+  const frame = document.getElementById(frameId);
+  loadedFrames[frameId] = false;
+  frame.src = '';
+  setTimeout(() => {
+    const mod = Object.values(MODULES).find(m => m.frame === frameId);
+    if(mod) {
+      frame.src = mod.src;
+      loadedFrames[frameId] = true;
+    }
+  }, 100);
+}
+
+function openFull(src) {
+  window.open(src, '_blank');
+}
+
+// ── OROLOGIO ───────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}) + ' · ' +
+    now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Nessun precaricamento — ogni modulo carica on-demand
+</script>
+</body>
+</html>
