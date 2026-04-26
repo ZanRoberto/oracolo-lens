@@ -201,7 +201,7 @@ def clear_session():
 # ════════════════════════════════════════════════════════════════════════════
 @app.route('/')
 def index():
-    return send_from_directory('.', 'due_diligence.html')
+    return send_from_directory('.', 'hub.html')
 
 @app.route('/<path:filename>')
 def static_files(filename):
