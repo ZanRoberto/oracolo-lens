@@ -1,6 +1,5 @@
 """
 Oracolo Lens — Piattaforma Intelligence Finanziaria per PMI Italiane
-© 2025 Albaconsulting S.r.l. — All rights reserved.
 Software proprietario. Uso consentito solo su licenza contrattuale.
 """
 
@@ -206,6 +205,38 @@ def index():
 @app.route('/<path:filename>')
 def static_files(filename):
     return send_from_directory('.', filename)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# AI PROXY — DeepSeek via variabile d'ambiente DEEPSEEK_API_KEY
+# ════════════════════════════════════════════════════════════════════════════
+@app.route('/api/ai/ask', methods=['POST'])
+def ai_ask():
+    import requests as req
+    api_key = os.environ.get('DEEPSEEK_API_KEY', '')
+    if not api_key:
+        return jsonify({'error': 'Chiave API non configurata'}), 500
+    d = request.get_json() or {}
+    prompt   = d.get('prompt', '')
+    system   = d.get('system', 'Sei un esperto consulente finanziario italiano.')
+    messages = d.get('messages', None)
+    if not messages:
+        messages = []
+        if system:
+            messages.append({'role': 'system', 'content': system})
+        messages.append({'role': 'user', 'content': prompt})
+    try:
+        r = req.post(
+            'https://api.deepseek.com/v1/chat/completions',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'model': 'deepseek-chat', 'messages': messages, 'max_tokens': 4000, 'temperature': 0.7},
+            timeout=60
+        )
+        data = r.json()
+        text = data.get('choices', [{}])[0].get('message', {}).get('content', 'Nessuna risposta.')
+        return jsonify({'ok': True, 'text': text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ── Health check ─────────────────────────────────────────────────────────────
 @app.route('/health')
