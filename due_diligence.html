@@ -348,7 +348,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--viola-l); border-radius: 2px; }
 </style>
 </head>
-<body><a href="due_diligence.html" style="position:fixed;top:1rem;left:1rem;z-index:9999;color:#5b3d8f;font-size:0.6rem;text-decoration:none;padding:0.4rem 0.8rem;border:1px solid #5b3d8f;border-radius:3px;background:#fff">← Menu</a>
+<body>
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -555,7 +555,7 @@ body {
         </div>
         <div class="iframe-actions">
           <button class="iframe-btn" onclick="reloadFrame('frame-budget')">↺ Ricarica</button>
-          <button class="iframe-btn primary" onclick="openFull('budget_viplastic.html')">⤢ Apri separato</button>
+          <button class="iframe-btn primary" onclick="openFull('budget_viplastic_2025_2026.html')">⤢ Apri separato</button>
         </div>
       </div>
       <iframe id="frame-budget" class="module-iframe" src="" title="Budget Viplastic 2025-2026"></iframe>
@@ -576,10 +576,10 @@ const MODULES = {
   // Due diligence
   'duediligence': { panel:'duediligence', frame:'frame-duediligence', src:'due_diligence.html', breadcrumb:'Due Diligence Finanziaria' },
   // Budget — ogni tab carica con ?view=
-  'budget-ce':      { panel:'budget', frame:'frame-budget', src:'budget_viplastic.html?view=ce', breadcrumb:'Conto Economico 2025–2026' },
-  'budget-mensile': { panel:'budget', frame:'frame-budget', src:'budget_viplastic.html?view=mensile', breadcrumb:'Dettaglio Mensile' },
-  'budget-fin':     { panel:'budget', frame:'frame-budget', src:'budget_viplastic.html?view=fin', breadcrumb:'Budget Finanziario' },
-  'budget-grafici': { panel:'budget', frame:'frame-budget', src:'budget_viplastic.html?view=grafici', breadcrumb:'Grafici e Tendenze' },
+  'budget-ce':      { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=ce', breadcrumb:'Conto Economico 2025–2026' },
+  'budget-mensile': { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=mensile', breadcrumb:'Dettaglio Mensile' },
+  'budget-fin':     { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=fin', breadcrumb:'Budget Finanziario' },
+  'budget-grafici': { panel:'budget', frame:'frame-budget', src:'budget_viplastic_2025_2026.html?view=grafici', breadcrumb:'Grafici e Tendenze' },
 };
 
 let currentModule = 'home';
