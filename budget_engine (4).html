@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Engine · Oracolo Lens</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --viola:#5b3d8f; --viola-dim:#3d2860; --viola-l:#9b7fd4; --viola-bg:#f2eefb;
+  --gold:#b8942a; --gold-bg:#fdf8ec;
+  --bg:#f4f5f9; --surface:#ffffff; --border:#dde0ee; --border2:#c8b0e8;
+  --text:#1a1a2e; --text2:#4a4a6a; --text3:#8888aa;
+  --green:#1e8449; --red:#c0392b; --amber:#e67e22;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6}
+
+/* TOPBAR */
+.topbar{height:48px;background:var(--viola);display:flex;align-items:center;padding:0 1.5rem;gap:1rem;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(91,61,143,0.3)}
+.topbar-back{color:rgba(255,255,255,0.6);font-size:0.55rem;text-transform:uppercase;letter-spacing:0.12em;text-decoration:none;border:1px solid rgba(255,255,255,0.2);padding:0.3rem 0.7rem;border-radius:3px;transition:all 0.15s}
+.topbar-back:hover{color:#fff;border-color:rgba(255,255,255,0.5)}
+.topbar-nome{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:#fff;font-weight:300}
+.topbar-sub{font-size:0.5rem;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.15em}
+.topbar-right{margin-left:auto;display:flex;gap:0.5rem;align-items:center}
+
+/* TABS */
+.tabs{background:#1a1030;border-bottom:1px solid rgba(255,255,255,0.1);padding:0 1.5rem;display:flex;gap:0;position:sticky;top:48px;z-index:99}
+.tab{padding:0.65rem 1rem;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;text-transform:uppercase;letter-spacing:0.14em;color:rgba(255,255,255,0.45);transition:all 0.2s;margin-bottom:-1px}
+.tab:hover{color:rgba(255,255,255,0.8)}
+.tab.active{color:#fff;border-bottom-color:#fff;font-weight:500}
+
+/* VIEWS */
+.view{display:none;padding:2rem;max-width:1200px;margin:0 auto}
+.view.active{display:block}
+
+/* SEZIONI */
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--viola);font-weight:300;margin-bottom:0.3rem}
+.sec-sub{font-size:0.55rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:1.5rem}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+.kpi-cell{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem}
+.kl{font-size:0.5rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);margin-bottom:0.4rem}
+.kv{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;color:var(--text)}
+.kv.up{color:var(--green)} .kv.dn{color:var(--red)} .kv.vio{color:var(--viola)}
+.kd{font-size:0.52rem;color:var(--text3);margin-top:0.2rem}
+.kd.up{color:var(--green)} .kd.dn{color:var(--red)}
+
+/* TABELLE */
+.scroll{overflow-x:auto;margin-bottom:2rem}
+table{width:100%;border-collapse:collapse;font-size:0.58rem}
+th{padding:0.5rem 0.7rem;text-align:right;font-size:0.48rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);border-bottom:2px solid var(--text);font-weight:500;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:0.45rem 0.7rem;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+td:first-child{text-align:left;color:var(--text2)}
+tr:hover td{background:var(--viola-bg)}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.tot-row td{font-weight:600;border-top:2px solid var(--border);border-bottom:2px solid var(--border);background:var(--bg)!important}
+.sec-row td{background:var(--viola-bg)!important;color:var(--viola);font-weight:600;font-size:0.5rem;letter-spacing:0.1em}
+.y25 th,.y25{color:var(--text2)}
+.note{background:var(--gold-bg);border:1px solid #e8d8a0;border-left:3px solid var(--gold);padding:0.8rem 1rem;font-size:0.6rem;color:var(--text2);margin-bottom:1.5rem;border-radius:0 4px 4px 0;line-height:1.8}
+.note strong{color:var(--gold)}
+
+/* PARAMETRI */
+.params-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem}
+.param-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem}
+.param-title{font-size:0.52rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--viola);font-weight:600;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.fascia-row{display:grid;grid-template-columns:80px 1fr 80px 30px;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.fascia-label{font-size:0.52rem;color:var(--text3)}
+input[type=number],input[type=text],select{width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text);background:var(--bg);outline:none}
+input[type=number]:focus,input[type=text]:focus,select:focus{border-color:var(--viola-l)}
+.add-btn{background:none;border:1px dashed var(--border2);color:var(--viola);padding:0.3rem 0.7rem;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:0.52rem;cursor:pointer;width:100%;margin-top:0.5rem;transition:all 0.15s}
+.add-btn:hover{background:var(--viola-bg)}
+.del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.9rem;padding:0.1rem}
+.del-btn:hover{color:var(--red)}
+.param-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;align-items:center}
+.param-label{font-size:0.55rem;color:var(--text2)}
+.rata-row{display:grid;grid-template-columns:2fr 1fr 1fr 30px;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.custom-row{display:grid;grid-template-columns:1.5fr 1fr 1fr 30px;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.apply-btn{background:var(--viola);color:#fff;border:none;border-radius:4px;padding:0.5rem 1.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;text-transform:uppercase;letter-spacing:0.12em;cursor:pointer;transition:background 0.15s}
+.apply-btn:hover{background:var(--viola-dim)}
+.pct-warn{font-size:0.5rem;color:var(--red);margin-top:0.3rem;display:none}
+
+/* GRAFICI */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem}
+.chart-title{font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);margin-bottom:1rem}
+.bars{display:flex;align-items:flex-end;gap:4px;height:80px}
+.bw{display:flex;flex-direction:column;align-items:center;flex:1;gap:3px}
+.b{width:100%;border-radius:2px 2px 0 0;transition:height 0.5s ease}
+.bl{font-size:0.42rem;color:var(--text3);white-space:nowrap}
+
+/* AI PANEL */
+.ai-btn{
+  background:#5b3d8f;color:#fff;border:none;border-radius:4px;
+  padding:0.55rem 1.1rem;font-family:'IBM Plex Mono',monospace;
+  font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;
+  cursor:pointer;transition:background 0.15s;
+}
+.ai-btn:hover{background:#3d2860;}
+.ai-lateral-budget{
+  position:fixed;top:0;right:-560px;width:560px;height:100%;
+  background:#fff;border-left:1px solid #dde0ee;z-index:9998;
+  display:flex;flex-direction:column;
+  transition:right 0.35s cubic-bezier(0.22,1,0.36,1);
+  box-shadow:-6px 0 32px rgba(91,61,143,0.18);
+  font-family:'IBM Plex Mono',monospace;
+}
+.ai-lateral-budget.on{right:0;}
+.ai-fab-budget{
+  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  z-index:9999;background:#5b3d8f;color:#fff;
+  border:none;border-radius:6px 0 0 6px;
+  padding:1.2rem 0.6rem;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;font-size:0.5rem;
+  text-transform:uppercase;letter-spacing:0.18em;
+  writing-mode:vertical-rl;
+  box-shadow:-3px 0 16px rgba(91,61,143,0.35);
+  transition:all 0.2s;
+}
+.ai-fab-budget:hover{background:#3d2860;}
+.ai-fab-budget.open{right:560px;}
+.ai-lat-head{
+  background:linear-gradient(135deg,#5b3d8f 0%,#3d2860 100%);
+  color:#fff;padding:1rem 1.2rem 0.8rem;flex-shrink:0;
+}
+.ai-lat-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:300;letter-spacing:0.05em;}
+.ai-lat-sub{font-size:0.48rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.16em;margin-top:0.2rem;}
+.ai-lat-close{position:absolute;top:0.8rem;right:1rem;background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:1rem;}
+.ai-lat-close:hover{color:#fff;}
+.ai-lat-btns{
+  padding:0.8rem 1rem;background:#f8f6fd;border-bottom:1px solid #dde0ee;
+  flex-shrink:0;display:flex;flex-wrap:wrap;gap:0.4rem;
+}
+.ai-lat-body{
+  flex:1;overflow-y:auto;padding:1.2rem 1.4rem;
+  display:flex;flex-direction:column;gap:1rem;
+}
+.ai-lat-block{border-radius:6px;border:1px solid #ddd0f0;overflow:visible;}
+.ai-lat-block.risp{background:#fff;border-color:#dde0ee;}
+.ai-lat-block-label{
+  padding:0.4rem 0.8rem;font-size:0.48rem;text-transform:uppercase;
+  letter-spacing:0.14em;font-weight:600;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ai-lat-block.risp .ai-lat-block-label{color:#1a1a2e;background:#f4f5f9;border-bottom:1px solid #dde0ee;}
+.ai-lat-block-content{
+  padding:1rem 1.1rem;font-family:'Cormorant Garamond',serif;
+  font-size:0.97rem;line-height:2;color:#1a1a2e;
+  white-space:normal;word-break:break-word;overflow-wrap:break-word;
+}
+.ai-lat-input{
+  border-top:1px solid #dde0ee;padding:0.8rem 1rem;
+  flex-shrink:0;display:flex;flex-direction:column;gap:0.5rem;background:#fafaf8;
+}
+.ai-lat-input-row{display:flex;gap:0.5rem;}
+.ai-lat-inp{
+  flex:1;padding:0.5rem 0.7rem;border:1px solid #dde0ee;border-radius:4px;
+  font-family:'IBM Plex Mono',monospace;font-size:0.58rem;color:#1a1a2e;
+  background:#fff;outline:none;
+}
+.ai-lat-inp:focus{border-color:#9b7fd4;}
+.ai-lat-send{
+  padding:0.5rem 0.9rem;background:#5b3d8f;color:#fff;border:none;
+  border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.58rem;
+  cursor:pointer;
+}
+.ai-lat-send:hover{background:#3d2860;}
+.ai-lat-body::-webkit-scrollbar{width:3px;}
+.ai-lat-body::-webkit-scrollbar-thumb{background:#c8b0e8;border-radius:2px;}
+.ai-response{display:none;}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--viola-l);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="hub.html" class="topbar-back">← Menu</a>
+  <div>
+    <div class="topbar-nome" id="tb-nome">Budget Engine</div>
+    <div class="topbar-sub" id="tb-sub">Motore Budget Parametrico</div>
+  </div>
+  <div class="topbar-right">
+    <span id="tb-prov" style="display:none;background:var(--viola-bg);color:var(--viola);font-size:0.45rem;padding:0.2rem 0.5rem;border-radius:3px;border:1px solid var(--border2)">PROVVISORIO</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('parametri',this)">⚙ Parametri</button>
+  <button class="tab" onclick="showTab('ce',this)">Conto Economico</button>
+  <button class="tab" onclick="showTab('mensile',this)">Dettaglio Mensile</button>
+  <button class="tab" onclick="showTab('fin',this)">Budget Finanziario</button>
+  <button class="tab" onclick="showTab('grafici',this)">Grafici</button>
+  <button class="tab" onclick="showTab('ai',this);openAIPanel()">◆ Narratore AI</button>
+</div>
+
+<!-- PARAMETRI -->
+<div id="view-parametri" class="view active">
+  <div class="sec-title">Scheda Parametri</div>
+  <div class="sec-sub" id="params-sub">Configura le regole finanziarie specifiche per questa società</div>
+
+  <div class="params-grid">
+
+    <!-- PROFILO INCASSO CLIENTI -->
+    <div class="param-card">
+      <div class="param-title">
+        Profilo Incasso Clienti
+        <span id="warn-inc" class="pct-warn">⚠ somma ≠ 100%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:60px 1fr 80px 30px;gap:0.4rem;margin-bottom:0.4rem">
+        <div class="fascia-label">%</div>
+        <div class="fascia-label">Giorni</div>
+        <div class="fascia-label">Descrizione</div>
+        <div></div>
+      </div>
+      <div id="inc-fasce"></div>
+      <button class="add-btn" onclick="addFascia('inc')">+ Aggiungi fascia</button>
+    </div>
+
+    <!-- PROFILO PAGAMENTO FORNITORI -->
+    <div class="param-card">
+      <div class="param-title">
+        Profilo Pagamento Fornitori
+        <span id="warn-pag" class="pct-warn">⚠ somma ≠ 100%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:60px 1fr 80px 30px;gap:0.4rem;margin-bottom:0.4rem">
+        <div class="fascia-label">%</div>
+        <div class="fascia-label">Giorni</div>
+        <div class="fascia-label">Descrizione</div>
+        <div></div>
+      </div>
+      <div id="pag-fasce"></div>
+      <button class="add-btn" onclick="addFascia('pag')">+ Aggiungi fascia</button>
+    </div>
+
+    <!-- PARAMETRI BASE -->
+    <div class="param-card">
+      <div class="param-title">Parametri Economici</div>
+      <div class="param-row">
+        <label class="param-label">Fatturato anno base (€)</label>
+        <input type="number" id="p-fat-base" value="0">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Crescita budget (%)</label>
+        <input type="number" id="p-cagr" value="12" step="0.1">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Costi variabili / fatturato (%)</label>
+        <input type="number" id="p-cv-pct" value="87.6" step="0.1">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Salari annui (€)</label>
+        <input type="number" id="p-salari" value="0">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Ammortamenti annui (€)</label>
+        <input type="number" id="p-amm" value="0">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Interessi passivi annui (€)</label>
+        <input type="number" id="p-int" value="0">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Aliquota fiscale effettiva (%)</label>
+        <input type="number" id="p-aliq" value="19.2" step="0.1">
+      </div>
+    </div>
+
+    <!-- PARAMETRI FINANZIARI -->
+    <div class="param-card">
+      <div class="param-title">Parametri Finanziari</div>
+      <div class="param-row">
+        <label class="param-label">Cassa iniziale anno 1 (€)</label>
+        <input type="number" id="p-cassa" value="0">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Anno di riferimento (budget)</label>
+        <input type="number" id="p-anno" value="2026">
+      </div>
+      <div class="param-row">
+        <label class="param-label">IVA aliquota prevalente (%)</label>
+        <input type="number" id="p-iva" value="22" step="0.1">
+      </div>
+      <div class="param-row">
+        <label class="param-label">Liquidazione IVA</label>
+        <select id="p-iva-liq">
+          <option value="mensile">Mensile</option>
+          <option value="trimestrale">Trimestrale</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- RATE PASSIVE -->
+    <div class="param-card">
+      <div class="param-title">Rate Passive (Mutui / Leasing / Finanziamenti)</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 30px;gap:0.4rem;margin-bottom:0.4rem">
+        <div class="fascia-label">Descrizione</div>
+        <div class="fascia-label">€/mese</div>
+        <div class="fascia-label">Fino a</div>
+        <div></div>
+      </div>
+      <div id="rate-list"></div>
+      <button class="add-btn" onclick="addRata()">+ Aggiungi rata</button>
+    </div>
+
+    <!-- CONDIZIONI CUSTOM -->
+    <div class="param-card">
+      <div class="param-title">Condizioni Finanziarie Custom</div>
+      <div style="font-size:0.52rem;color:var(--text3);margin-bottom:0.8rem;line-height:1.7">
+        Anticipi fatture, fidi rotativi, accordi specifici clienti/fornitori, note integrative...
+      </div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 30px;gap:0.4rem;margin-bottom:0.4rem">
+        <div class="fascia-label">Descrizione</div>
+        <div class="fascia-label">Tipo</div>
+        <div class="fascia-label">Importo/€</div>
+        <div></div>
+      </div>
+      <div id="custom-list"></div>
+      <button class="add-btn" onclick="addCustom()">+ Aggiungi condizione</button>
+    </div>
+
+  </div>
+
+  <div style="display:flex;gap:1rem;align-items:center">
+    <button class="apply-btn" onclick="applyParams()">▶ Applica e Ricalcola</button>
+    <div id="preset-btns">
+      <button onclick="loadPreset('viplastic')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:0.5rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:0.52rem;cursor:pointer">Carica Viplastic</button>
+      <button onclick="loadPreset('rcs')" style="background:none;border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:0.5rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:0.52rem;cursor:pointer">Carica RCS</button>
+    </div>
+    <span id="apply-status" style="font-size:0.52rem;color:var(--green);display:none">✓ Parametri applicati</span>
+  </div>
+</div>
+
+<!-- CONTO ECONOMICO -->
+<div id="view-ce" class="view"></div>
+
+<!-- MENSILE -->
+<div id="view-mensile" class="view"></div>
+
+<!-- FINANZIARIO -->
+<div id="view-fin" class="view"></div>
+
+<!-- GRAFICI -->
+<div id="view-grafici" class="view"></div>
+
+<!-- AI -->
+<div id="view-ai" class="view">
+</div>
+
+<!-- PANNELLO LATERALE AI -->
+<button class="ai-fab-budget" id="ai-fab-b" onclick="toggleAIPanel()">◆ AI</button>
+
+<div class="ai-lateral-budget" id="ai-lateral-b">
+  <div class="ai-lat-head" style="position:relative">
+    <div class="ai-lat-title">◆ Narratore · CFO Senior</div>
+    <div class="ai-lat-sub" id="ai-lat-sub-title">Budget Engine</div>
+    <button class="ai-lat-close" onclick="closeAIPanel()">✕</button>
+  </div>
+  <div class="ai-lat-btns">
+    <button class="ai-btn" style="font-size:0.48rem;padding:0.35rem 0.7rem" onclick="aiAnalisi('budget')">Analisi Completa</button>
+    <button class="ai-btn" style="font-size:0.48rem;padding:0.35rem 0.7rem" onclick="aiAnalisi('cash')">Cash Flow Critico</button>
+    <button class="ai-btn" style="font-size:0.48rem;padding:0.35rem 0.7rem" onclick="aiAnalisi('rischi')">Rischi</button>
+    <button class="ai-btn" style="font-size:0.48rem;padding:0.35rem 0.7rem" onclick="aiAnalisi('parametri')">Parametri</button>
+    <button onclick="resetAIPanel()" style="background:none;border:1px solid #dde0ee;color:#8888aa;border-radius:3px;padding:0.35rem 0.6rem;font-family:'IBM Plex Mono',monospace;font-size:0.48rem;cursor:pointer;margin-left:auto">↺ Reset</button>
+  </div>
+  <div class="ai-lat-body" id="ai-lat-body">
+    <div style="text-align:center;padding:2.5rem 1rem;color:#8888aa;font-size:0.63rem;line-height:2">
+      Il Narratore legge i parametri del budget attivo<br>e risponde come un CFO senior con 25 anni di esperienza.<br><br>
+      <button onclick="aiAnalisi('budget')" style="background:#5b3d8f;color:#fff;border:none;border-radius:4px;padding:0.65rem 1.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.14em;cursor:pointer;box-shadow:0 2px 8px rgba(91,61,143,0.3)">▶ Avvia Analisi</button>
+    </div>
+  </div>
+  <div class="ai-lat-input">
+    <div style="font-size:0.48rem;text-transform:uppercase;letter-spacing:0.14em;color:#8888aa">Domanda libera al CFO</div>
+    <div class="ai-lat-input-row">
+      <input type="text" id="ai-lat-inp" class="ai-lat-inp" placeholder="es. Qual è il mese più critico per la liquidità?">
+      <button class="ai-lat-send" onclick="aiDomanda()">▶ Chiedi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATO GLOBALE
+// ═══════════════════════════════════════════════════════════
+var P = {}; // parametri correnti
+var CALC = {}; // risultati calcolati
+var incFasce = [];
+var pagFasce = [];
+var rateList = [];
+var customList = [];
+
+// PRESET SOCIETÀ
+var PRESETS = {
+  viplastic: {
+    nome: 'Viplastic SRL', ateco: '222',
+    fat_base: 32926202, anno: 2026, cagr: 12,
+    cv_pct: 87.6, salari: 1466422, amm: 1197942, interessi: 120691, aliq: 19.2,
+    cassa: 850000, iva: 22, iva_liq: 'mensile',
+    inc_fasce: [{pct:100, giorni:75, desc:'Standard'}],
+    pag_fasce: [{pct:100, giorni:90, desc:'Standard'}],
+    rate: [{nome:'Mutuo impianti 2025-2026', importo:50000, scadenza:'2026-12'}],
+    custom: [],
+    storico: [
+      {anno:'2018',fat:18060582,cv:15271004,salari:859256,amm:758834,int:78944,un:804521,liq:1091149},
+      {anno:'2019',fat:16900205,cv:14112400,salari:884431,amm:881676,int:87542,un:742338,liq:308609},
+      {anno:'2020',fat:16473587,cv:13807116,salari:833142,amm:931914,int:85966,un:673404,liq:1024347},
+      {anno:'2021',fat:27475810,cv:23747600,salari:1169542,amm:987162,int:79657,un:1121586,liq:1870580},
+      {anno:'2022',fat:32926202,cv:29236633,salari:1466422,amm:1197942,int:120691,un:851422,liq:878678},
+    ],
+    pesi: [0.075,0.072,0.085,0.088,0.090,0.092,0.080,0.075,0.090,0.095,0.085,0.073]
+  },
+  rcs: {
+    nome: 'RCS Tecnoimpianti S.r.l.', ateco: '43210',
+    fat_base: 2503557, anno: 2026, cagr: 5,
+    cv_pct: 72, salari: 284817, amm: 21982, interessi: 7990, aliq: 24,
+    cassa: 198206, iva: 22, iva_liq: 'mensile',
+    inc_fasce: [{pct:40,giorni:30,desc:'Pronto pagamento'},{pct:60,giorni:60,desc:'Standard'}],
+    pag_fasce: [{pct:50,giorni:30,desc:'Fornitori breve'},{pct:50,giorni:60,desc:'Fornitori standard'}],
+    rate: [],
+    custom: [],
+    storico: [
+      {anno:'2020',fat:1972990,cv:1420553,salari:268562,amm:21715,int:5361,un:32810,liq:211783},
+      {anno:'2021',fat:2195933,cv:1581072,salari:306417,amm:27165,int:5641,un:72914,liq:278944},
+      {anno:'2022',fat:2669090,cv:1921745,salari:340266,amm:27524,int:5293,un:82038,liq:286770},
+      {anno:'2023',fat:2544771,cv:1832235,salari:350013,amm:25152,int:10234,un:68614,liq:318269},
+      {anno:'2024',fat:2503557,cv:1802561,salari:284817,amm:21982,int:7990,un:43774,liq:198206},
+    ],
+    pesi: [0.07,0.07,0.09,0.09,0.09,0.085,0.07,0.06,0.09,0.095,0.09,0.08]
+  }
+};
+
+var MESI_NOMI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('societa') || '';
+  const map = { 'vip': 'viplastic', 'viplastic': 'viplastic', 'rcs': 'rcs' };
+  const societa = map[raw] || raw || 'viplastic';
+  loadPreset(societa);
+  // Nascondi bottoni preset se arriva da società specifica
+  if (raw) {
+    const pb = document.getElementById('preset-btns');
+    if (pb) pb.style.display = 'none';
+  }
+}
+
+function loadPreset(id) {
+  const pr = PRESETS[id];
+  if (!pr) return;
+  P = {...pr};
+
+  // Aggiorna topbar
+  document.getElementById('tb-nome').textContent = pr.nome + ' · Budget';
+  document.getElementById('tb-sub').textContent = 'ATECO ' + pr.ateco + ' · Anno ' + pr.anno;
+
+  // Popola form
+  document.getElementById('p-fat-base').value = pr.fat_base;
+  document.getElementById('p-anno').value = pr.anno;
+  document.getElementById('p-cagr').value = pr.cagr;
+  document.getElementById('p-cv-pct').value = pr.cv_pct;
+  document.getElementById('p-salari').value = pr.salari;
+  document.getElementById('p-amm').value = pr.amm;
+  document.getElementById('p-int').value = pr.interessi;
+  document.getElementById('p-aliq').value = pr.aliq;
+  document.getElementById('p-cassa').value = pr.cassa;
+  document.getElementById('p-iva').value = pr.iva;
+  document.getElementById('p-iva-liq').value = pr.iva_liq;
+
+  incFasce = pr.inc_fasce.map(f => ({...f}));
+  pagFasce = pr.pag_fasce.map(f => ({...f}));
+  rateList = (pr.rate||[]).map(r => ({...r}));
+  customList = (pr.custom||[]).map(c => ({...c}));
+
+  renderFasce();
+  renderRate();
+  renderCustom();
+  applyParams();
+}
+
+// ═══════════════════════════════════════════════════════════
+// FASCE UI
+// ═══════════════════════════════════════════════════════════
+function renderFasce() {
+  renderFasceGroup('inc', incFasce, 'warn-inc');
+  renderFasceGroup('pag', pagFasce, 'warn-pag');
+}
+
+function renderFasceGroup(tipo, arr, warnId) {
+  const container = document.getElementById(tipo+'-fasce');
+  container.innerHTML = arr.map((f,i) => `
+    <div class="fascia-row">
+      <input type="number" min="0" max="100" value="${f.pct}" onchange="updateFascia('${tipo}',${i},'pct',this.value)" style="text-align:center">
+      <input type="number" min="0" value="${f.giorni}" onchange="updateFascia('${tipo}',${i},'giorni',this.value)">
+      <input type="text" value="${f.desc||''}" placeholder="es. Standard" onchange="updateFascia('${tipo}',${i},'desc',this.value)">
+      <button class="del-btn" onclick="delFascia('${tipo}',${i})">×</button>
+    </div>`).join('');
+  checkPct(tipo, arr, warnId);
+}
+
+function checkPct(tipo, arr, warnId) {
+  const tot = arr.reduce((s,f)=>s+(parseFloat(f.pct)||0),0);
+  const w = document.getElementById(warnId);
+  if (w) w.style.display = Math.abs(tot-100) > 0.5 ? 'inline' : 'none';
+}
+
+function updateFascia(tipo, idx, field, val) {
+  const arr = tipo==='inc' ? incFasce : pagFasce;
+  arr[idx][field] = field==='desc' ? val : parseFloat(val)||0;
+  checkPct(tipo, arr, 'warn-'+tipo);
+}
+
+function addFascia(tipo) {
+  const arr = tipo==='inc' ? incFasce : pagFasce;
+  arr.push({pct:0, giorni:30, desc:''});
+  renderFasce();
+}
+
+function delFascia(tipo, idx) {
+  const arr = tipo==='inc' ? incFasce : pagFasce;
+  arr.splice(idx,1);
+  renderFasce();
+}
+
+// RATE
+function renderRate() {
+  const c = document.getElementById('rate-list');
+  c.innerHTML = rateList.map((r,i) => `
+    <div class="rata-row">
+      <input type="text" value="${r.nome}" placeholder="es. Mutuo impianti" onchange="rateList[${i}].nome=this.value">
+      <input type="number" value="${r.importo}" onchange="rateList[${i}].importo=parseFloat(this.value)||0">
+      <input type="text" value="${r.scadenza}" placeholder="AAAA-MM" onchange="rateList[${i}].scadenza=this.value">
+      <button class="del-btn" onclick="rateList.splice(${i},1);renderRate()">×</button>
+    </div>`).join('');
+}
+
+function addRata() {
+  rateList.push({nome:'', importo:0, scadenza:''});
+  renderRate();
+}
+
+// CUSTOM
+function renderCustom() {
+  const c = document.getElementById('custom-list');
+  c.innerHTML = customList.map((r,i) => `
+    <div class="custom-row">
+      <input type="text" value="${r.desc||''}" placeholder="es. Fido rotativo banca X" onchange="customList[${i}].desc=this.value">
+      <select onchange="customList[${i}].tipo=this.value">
+        <option ${r.tipo==='entrata'?'selected':''} value="entrata">Entrata</option>
+        <option ${r.tipo==='uscita'?'selected':''} value="uscita">Uscita</option>
+        <option ${r.tipo==='info'?'selected':''} value="info">Info</option>
+      </select>
+      <input type="number" value="${r.importo||0}" onchange="customList[${i}].importo=parseFloat(this.value)||0">
+      <button class="del-btn" onclick="customList.splice(${i},1);renderCustom()">×</button>
+    </div>`).join('');
+}
+
+function addCustom() {
+  customList.push({desc:'', tipo:'info', importo:0});
+  renderCustom();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CALCOLO MOTORE
+// ═══════════════════════════════════════════════════════════
+function applyParams() {
+  P.fat_base = parseFloat(document.getElementById('p-fat-base').value)||0;
+  P.anno = parseInt(document.getElementById('p-anno').value)||2026;
+  P.cagr = parseFloat(document.getElementById('p-cagr').value)||0;
+  P.cv_pct = parseFloat(document.getElementById('p-cv-pct').value)/100;
+  P.salari = parseFloat(document.getElementById('p-salari').value)||0;
+  P.amm = parseFloat(document.getElementById('p-amm').value)||0;
+  P.interessi = parseFloat(document.getElementById('p-int').value)||0;
+  P.aliq = parseFloat(document.getElementById('p-aliq').value)/100;
+  P.cassa = parseFloat(document.getElementById('p-cassa').value)||0;
+  P.iva = parseFloat(document.getElementById('p-iva').value)/100;
+  P.iva_liq = document.getElementById('p-iva-liq').value;
+  P.inc_fasce = incFasce;
+  P.pag_fasce = pagFasce;
+  P.rate = rateList;
+  P.custom = customList;
+
+  // Calcola anni budget
+  const annoBase = P.anno - 1;
+  P.fat_anno1 = P.fat_base * Math.pow(1 + P.cagr/100, 1);
+  P.fat_anno2 = P.fat_base * Math.pow(1 + P.cagr/100, 2);
+
+  calcAll();
+  renderCE();
+  renderMensile();
+  renderFin();
+  renderGrafici();
+
+  const s = document.getElementById('apply-status');
+  s.style.display = 'inline';
+  setTimeout(()=>s.style.display='none', 2000);
+}
+
+function calcAnno(fat) {
+  const cv = fat * P.cv_pct;
+  const mg = fat - cv;
+  const ebitda = mg - P.salari;
+  const ebit = ebitda - P.amm;
+  const uat = ebit - P.interessi;
+  const imp = uat > 0 ? uat * P.aliq : 0;
+  const un = uat - imp;
+  return {fat, cv, mg, ebitda, ebit, uat, imp, un};
+}
+
+function calcAll() {
+  const pesi = P.pesi || [0.083,0.083,0.083,0.083,0.083,0.083,0.083,0.083,0.083,0.083,0.083,0.087];
+  const Y1 = calcAnno(P.fat_anno1);
+  const Y2 = calcAnno(P.fat_anno2);
+
+  function mesiAnno(yval, annoLabel) {
+    const d = calcAnno(yval);
+    return pesi.map((p,i) => {
+      const fat = d.fat*p, cv = fat*P.cv_pct;
+      const mg = fat-cv, ebitda = mg-P.salari/12;
+      const ebit = ebitda-P.amm/12, uat = ebit-P.interessi/12;
+      const imp = uat>0?uat*P.aliq:0, un = uat-imp;
+      return {mese:MESI_NOMI[i], anno:annoLabel, fat, cv, salari:P.salari/12,
+              amm:P.amm/12, int:P.interessi/12, mg, ebitda, ebit, uat, imp, un};
+    });
+  }
+
+  const M1 = mesiAnno(P.fat_anno1, String(P.anno));
+  const M2 = mesiAnno(P.fat_anno2, String(P.anno+1));
+
+  // DSO medio ponderato per il cash flow
+  const dso_medio = incFasce.reduce((s,f)=>(s+(f.pct/100)*(f.giorni)),0)||75;
+  const dpo_medio = pagFasce.reduce((s,f)=>(s+(f.pct/100)*(f.giorni)),0)||90;
+
+  // Costruisce sequenza mensile per cash flow
+  const annoPrec = P.anno - 1;
+  const fat_prec = P.fat_base;
+  const cv_prec = fat_prec * P.cv_pct;
+
+  // Sequenza: 12 mesi anno precedente + 12 mesi anno1 + 12 mesi anno2
+  const SEQ_FAT = [...Array(12).fill(fat_prec/12), ...M1.map(m=>m.fat), ...M2.map(m=>m.fat)];
+  const SEQ_CV  = [...Array(12).fill(cv_prec/12),  ...M1.map(m=>m.cv),  ...M2.map(m=>m.cv)];
+
+  // Cash flow con fasce DSO/DPO
+  let cassa = P.cassa;
+  const rows = [];
+  const allMesi = [...M1,...M2];
+
+  allMesi.forEach((m,i) => {
+    const seqIdx = i + 12; // offset: 12 mesi anno prec prima
+
+    // Calcola incasso distribuendo sulle fasce
+    let incasso = 0;
+    incFasce.forEach(f => {
+      const mesiOffset = Math.round(f.giorni / 30);
+      const srcIdx = seqIdx - mesiOffset;
+      const src = SEQ_FAT[srcIdx] || 0;
+      incasso += src * (f.pct/100);
+    });
+
+    // Calcola pagamento fornitori distribuendo sulle fasce
+    let pag_for = 0;
+    pagFasce.forEach(f => {
+      const mesiOffset = Math.round(f.giorni / 30);
+      const srcIdx = seqIdx - mesiOffset;
+      const src = SEQ_CV[srcIdx] || 0;
+      pag_for += src * (f.pct/100);
+    });
+
+    const pag_sal = P.salari/12;
+    const pag_int = P.interessi/12;
+    const imp_anno = i<12 ? Y1.imp : Y2.imp;
+    const pag_imp = (i===4||i===16)?imp_anno*0.40:(i===10||i===22)?imp_anno*0.60:0;
+
+    // Rate passive attive nel mese corrente
+    const annoMese = i<12 ? P.anno : P.anno+1;
+    const meseMese = (i%12)+1;
+    let pag_rate = 0;
+    rateList.forEach(r => {
+      if (!r.scadenza) { pag_rate += r.importo; return; }
+      const [sy,sm] = r.scadenza.split('-').map(Number);
+      if (annoMese < sy || (annoMese===sy && meseMese<=sm)) pag_rate += r.importo;
+    });
+
+    // IVA
+    const iva_inc = incasso * P.iva;
+    const iva_pag = pag_for * P.iva;
+    const saldo_iva = iva_inc - iva_pag;
+    const vers_iva = saldo_iva>0 ? saldo_iva : 0;
+    const cred_iva = saldo_iva<0 ? -saldo_iva : 0;
+
+    // Condizioni custom (entrate/uscite mensili)
+    let custom_in=0, custom_out=0;
+    customList.forEach(c => {
+      if(c.tipo==='entrata') custom_in += (c.importo||0)/12;
+      else if(c.tipo==='uscita') custom_out += (c.importo||0)/12;
+    });
+
+    const tot_in = incasso + cred_iva + custom_in;
+    const tot_out = pag_for + pag_sal + pag_int + pag_imp + pag_rate + vers_iva + custom_out;
+    const saldo = tot_in - tot_out;
+    cassa += saldo;
+
+    rows.push({
+      label: m.mese+' '+(i<12?P.anno:P.anno+1),
+      anno: i<12?String(P.anno):String(P.anno+1),
+      incasso, pag_for, pag_sal, pag_int, pag_imp, pag_rate,
+      iva_inc, iva_pag, vers_iva, cred_iva, saldo_iva,
+      custom_in, custom_out,
+      tot_in, tot_out, saldo, cassa
+    });
+  });
+
+  CALC = {Y1, Y2, M1, M2, rows,
+    storico: P.storico||[],
+    dso_medio, dpo_medio};
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER VISTE
+// ═══════════════════════════════════════════════════════════
+var fE = n => {
+  if(n===0) return '—';
+  const abs = Math.abs(Math.round(n));
+  const s = abs.toLocaleString('it-IT');
+  return n<0?'('+s+')':s;
+};
+var sign = n => (n>=0?'+':'')+fE(n);
+var pct = n => n.toFixed(1)+'%';
+
+function renderCE() {
+  const {Y1,Y2,storico} = CALC;
+  const a1 = P.anno, a2 = P.anno+1;
+  let h = `<div class="sec-title">Conto Economico Previsionale</div>
+  <div class="sec-sub">Base storica · Proiezione budget ${a1}–${a2} · Crescita +${P.cagr}%/anno</div>`;
+
+  const voci = [
+    {k:'fat',  label:'Fatturato netto'},
+    {k:'cv',   label:'Costi variabili', neg:true},
+    {k:'mg',   label:'Margine lordo', bold:true},
+    {k:'salari',label:'Costo del personale', neg:true},
+    {k:'ebitda',label:'EBITDA', bold:true},
+    {k:'amm',  label:'Ammortamenti', neg:true},
+    {k:'ebit', label:'EBIT', bold:true},
+    {k:'int',  label:'Interessi passivi', neg:true},
+    {k:'uat',  label:'Utile ante imposte', bold:true},
+    {k:'imp',  label:'Imposte', neg:true},
+    {k:'un',   label:'Utile netto', bold:true},
+  ];
+
+  h += '<div class="scroll"><table><thead><tr><th>Voce</th>';
+  storico.forEach(s => h += `<th>${s.anno}</th>`);
+  h += `<th style="color:var(--viola)">${a1} Budget</th><th style="color:var(--viola)">${a2} Budget</th></tr></thead><tbody>`;
+
+  voci.forEach(v => {
+    const sty = v.bold ? 'font-weight:600;border-top:1px solid var(--border)' : '';
+    h += `<tr style="${sty}"><td>${v.label}</td>`;
+    storico.forEach(s => {
+      const val = s[v.k] || (v.k==='ebitda'?s.fat-s.cv-s.salari:v.k==='ebit'?(s.fat-s.cv-s.salari-s.amm):v.k==='uat'?(s.fat-s.cv-s.salari-s.amm-s.int):0);
+      h += `<td>${fE(val)}</td>`;
+    });
+    h += `<td style="color:var(--viola);font-weight:500">${fE(Y1[v.k]||0)}</td>`;
+    h += `<td style="color:var(--viola-dim);font-weight:500">${fE(Y2[v.k]||0)}</td></tr>`;
+  });
+
+  // Margini
+  h += `<tr style="border-top:2px solid var(--border)"><td style="color:var(--text3);font-size:0.5rem">Margine EBITDA</td>`;
+  storico.forEach(s => {
+    const eb = s.fat-s.cv-s.salari;
+    h += `<td style="font-size:0.55rem;color:var(--text3)">${pct(eb/s.fat*100)}</td>`;
+  });
+  h += `<td style="color:var(--viola)">${pct(Y1.ebitda/Y1.fat*100)}</td><td style="color:var(--viola-dim)">${pct(Y2.ebitda/Y2.fat*100)}</td></tr>`;
+  h += '</tbody></table></div>';
+  document.getElementById('view-ce').innerHTML = h;
+}
+
+function renderMensile() {
+  const {M1,M2} = CALC;
+  let h = `<div class="sec-title">Dettaglio Mensile</div>
+  <div class="sec-sub">Distribuzione con stagionalità settore · anno ${P.anno} e ${P.anno+1}</div>`;
+
+  const voci = [
+    {k:'fat',label:'Fatturato'},{k:'cv',label:'Costi variabili',neg:true},
+    {k:'mg',label:'Margine lordo',bold:true},{k:'salari',label:'Personale',neg:true},
+    {k:'ebitda',label:'EBITDA',bold:true},{k:'un',label:'Utile netto',bold:true}
+  ];
+
+  [M1,M2].forEach((M,yi) => {
+    const annoLabel = yi===0?P.anno:P.anno+1;
+    h += `<div style="font-size:0.6rem;color:var(--viola);font-weight:600;margin:1.5rem 0 0.5rem">${annoLabel}</div>`;
+    h += '<div class="scroll"><table><thead><tr><th>Voce</th>';
+    M.forEach(m => h += `<th>${m.mese}</th>`);
+    h += '<th>Totale</th></tr></thead><tbody>';
+    voci.forEach(v => {
+      const sty = v.bold?'font-weight:600;border-top:1px solid var(--border)':'';
+      h += `<tr style="${sty}"><td>${v.label}</td>`;
+      let tot=0;
+      M.forEach(m => { tot+=m[v.k]||0; h+=`<td>${fE(m[v.k]||0)}</td>`; });
+      h += `<td style="font-weight:600">${fE(tot)}</td></tr>`;
+    });
+    h += '</tbody></table></div>';
+  });
+  document.getElementById('view-mensile').innerHTML = h;
+}
+
+function renderFin() {
+  const {rows} = CALC;
+  const liq1 = rows[11]?.cassa||0, liq2 = rows[23]?.cassa||0;
+  const s1 = rows.slice(0,12).reduce((s,r)=>s+r.saldo,0);
+  const s2 = rows.slice(12).reduce((s,r)=>s+r.saldo,0);
+  const minC = Math.min(...rows.map(r=>r.cassa));
+  const meseMin = rows.find(r=>r.cassa===minC);
+
+  // Descrizione metodologia fasce
+  const descInc = incFasce.map(f=>`${f.pct}% a ${f.giorni}gg`).join(' · ');
+  const descPag = pagFasce.map(f=>`${f.pct}% a ${f.giorni}gg`).join(' · ');
+
+  let h = `<div class="sec-title">Budget Finanziario — Flussi di Cassa</div>
+  <div class="sec-sub">Incasso clienti: ${descInc} · Pagamento fornitori: ${descPag}</div>`;
+
+  h += `<div class="note"><strong>Metodologia:</strong>
+  Incassi calcolati distribuendo il fatturato sulle fasce di incasso clienti (${descInc}).
+  Pagamenti fornitori distribuiti sulle fasce DPO (${descPag}).
+  IVA ${(P.iva*100).toFixed(0)}% — liquidazione ${P.iva_liq}.
+  Cassa apertura: <strong>${fE(P.cassa)}</strong>.
+  ${rateList.length?'Rate passive: '+rateList.map(r=>r.nome+' €'+fE(r.importo)+'/mese').join(', ')+'.':''}
+  ${customList.filter(c=>c.tipo!=='info').length?'Condizioni custom: '+customList.filter(c=>c.tipo!=='info').map(c=>c.desc).join(', ')+'.':''}
+  </div>`;
+
+  h += '<div class="kpi-row">';
+  h += `<div class="kpi-cell"><div class="kl">Cassa apertura</div><div class="kv vio">${fE(P.cassa)}</div></div>`;
+  h += `<div class="kpi-cell"><div class="kl">Cassa fine ${P.anno}</div><div class="kv ${liq1>P.cassa?'up':'dn'}">${fE(liq1)}</div><div class="kd ${s1>=0?'up':'dn'}">Saldo: ${sign(s1)}</div></div>`;
+  h += `<div class="kpi-cell"><div class="kl">Cassa fine ${P.anno+1}</div><div class="kv ${liq2>liq1?'up':'dn'}">${fE(liq2)}</div><div class="kd ${s2>=0?'up':'dn'}">Saldo: ${sign(s2)}</div></div>`;
+  h += `<div class="kpi-cell"><div class="kl">Cassa minima</div><div class="kv ${minC<0?'dn':minC<300000?'':'up'}">${fE(minC)}</div><div class="kd">${meseMin?.label||'—'}</div></div>`;
+  h += '</div>';
+
+  h += '<div class="scroll"><table><thead><tr>';
+  h += '<th>Mese</th><th>Incassi</th><th>Pag. fornitori</th><th>Personale</th><th>Interessi</th>';
+  if(rateList.length) h += '<th>Rate</th>';
+  h += '<th>IVA</th><th>Imposte</th><th>Totale uscite</th><th>Saldo</th><th>Cassa</th></tr></thead><tbody>';
+
+  let prevAnno='';
+  rows.forEach((r,i) => {
+    if(r.anno!==prevAnno) {
+      h+=`<tr class="sec-row"><td colspan="12">── ${r.anno} ──</td></tr>`;
+      prevAnno=r.anno;
+    }
+    const sc=r.saldo>=0?'pos':'neg', cc=r.cassa<0?'neg':r.cassa<200000?'':'pos';
+    h+=`<tr>
+      <td>${r.label}</td>
+      <td class="pos">${fE(r.tot_in)}</td>
+      <td class="neg">(${fE(r.pag_for)})</td>
+      <td class="neg">(${fE(r.pag_sal)})</td>
+      <td class="neg">(${fE(r.pag_int)})</td>
+      ${rateList.length?`<td class="neg">${r.pag_rate>0?'('+fE(r.pag_rate)+')':'—'}</td>`:''}
+      <td class="${r.vers_iva>0?'neg':'pos'}">${r.vers_iva>0?'('+fE(r.vers_iva)+')':'+'+fE(r.cred_iva)}</td>
+      <td class="${r.pag_imp>0?'neg':''}">${r.pag_imp>0?'('+fE(r.pag_imp)+')':'—'}</td>
+      <td class="neg">(${fE(r.tot_out)})</td>
+      <td class="${sc}">${(r.saldo>=0?'+':'')+fE(r.saldo)}</td>
+      <td class="${cc}" style="font-weight:600">${fE(r.cassa)}</td>
+    </tr>`;
+    if(i===11||i===23) {
+      const sl=rows.slice(i-11,i+1);
+      const tI=sl.reduce((s,x)=>s+x.tot_in,0);
+      const tF=sl.reduce((s,x)=>s+x.pag_for,0);
+      const tS=sl.reduce((s,x)=>s+x.pag_sal,0);
+      const tIn=sl.reduce((s,x)=>s+x.pag_int,0);
+      const tR=sl.reduce((s,x)=>s+x.pag_rate,0);
+      const tIva=sl.reduce((s,x)=>s+x.vers_iva,0);
+      const tIm=sl.reduce((s,x)=>s+x.pag_imp,0);
+      const tO=sl.reduce((s,x)=>s+x.tot_out,0);
+      const tSa=sl.reduce((s,x)=>s+x.saldo,0);
+      h+=`<tr class="tot-row"><td>TOTALE ANNO</td><td>${fE(tI)}</td><td>(${fE(tF)})</td><td>(${fE(tS)})</td><td>(${fE(tIn)})</td>
+        ${rateList.length?`<td>(${fE(tR)})</td>`:''}
+        <td>(${fE(tIva)})</td><td>${tIm>0?'('+fE(tIm)+')':'—'}</td>
+        <td>(${fE(tO)})</td><td>${(tSa>=0?'+':'')+fE(tSa)}</td>
+        <td style="font-weight:700">${fE(rows[i].cassa)}</td></tr>`;
+    }
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('view-fin').innerHTML = h;
+}
+
+function renderGrafici() {
+  const {Y1,Y2,rows,storico} = CALC;
+  const tutti = [
+    ...storico.map(s=>({anno:s.anno,fat:s.fat,ebitda:s.fat-s.cv-s.salari,un:s.un,liq:s.liq,tipo:'storico'})),
+    {anno:String(P.anno),fat:Y1.fat,ebitda:Y1.ebitda,un:Y1.un,tipo:'budget'},
+    {anno:String(P.anno+1),fat:Y2.fat,ebitda:Y2.ebitda,un:Y2.un,tipo:'budget'}
+  ];
+
+  function bars(data,key,c0,c1,c2) {
+    const vals=data.map(t=>Math.max(0,t[key]||0));
+    const max=Math.max(...vals)||1;
+    return data.map(t=>{
+      const h=Math.max(2,(Math.max(0,t[key]||0))/max*72);
+      const col=t.tipo==='storico'?c0:t.tipo==='intermedio'?c1:c2;
+      return `<div class="bw"><div class="b" style="height:${h}px;background:${col}"></div><div class="bl">${t.anno}</div></div>`;
+    }).join('');
+  }
+
+  const cassaMensile = rows.map((r,i)=>({label:MESI_NOMI[i%12],cassa:r.cassa}));
+  const maxC=Math.max(...cassaMensile.map(r=>r.cassa))||1;
+  const minC=Math.min(...cassaMensile.map(r=>r.cassa));
+  const baseC=minC<0?Math.abs(minC):0;
+
+  let h=`<div class="chart-grid">
+  <div class="chart-box"><div class="chart-title">Fatturato storico + budget</div>
+    <div class="bars">${bars(tutti,'fat','#3d2860','#7a5cb0','#5b3d8f')}</div>
+    <div style="font-size:0.45rem;color:var(--text3);margin-top:0.5rem">■ storico &nbsp; ■ budget</div>
+  </div>
+  <div class="chart-box"><div class="chart-title">EBITDA storico + budget</div>
+    <div class="bars">${bars(tutti,'ebitda','#c8b0e8','#a07dd4','#5b3d8f')}</div>
+  </div>
+  <div class="chart-box"><div class="chart-title">Utile netto storico + budget</div>
+    <div class="bars">${bars(tutti,'un','#9fd4b0','#5bb880','#1e8449')}</div>
+  </div>
+  <div class="chart-box"><div class="chart-title">Cassa progressiva mensile (${P.anno}–${P.anno+1})</div>
+    <div class="bars" style="height:80px">
+    ${cassaMensile.map((r,i)=>{
+      const h2=Math.max(2,(r.cassa+baseC)/(maxC+baseC)*72);
+      const col=r.cassa<0?'#c0392b':r.cassa<200000?'#e67e22':'#5b3d8f';
+      return `<div class="bw"><div class="b" style="height:${h2}px;background:${col}"></div><div class="bl" style="font-size:0.38rem">${i===0||i===6||i===12||i===18?r.label:''}</div></div>`;
+    }).join('')}
+    </div>
+  </div>
+  </div>`;
+  document.getElementById('view-grafici').innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI
+// ═══════════════════════════════════════════════════════════
+async function aiAnalisi(tipo) {
+  const {Y1,Y2,rows} = CALC;
+  const liq1=rows[11]?.cassa||0, liq2=rows[23]?.cassa||0;
+  const minC=Math.min(...rows.map(r=>r.cassa));
+  const meseMin=rows.find(r=>r.cassa===minC);
+  const descInc=incFasce.map(f=>`${f.pct}% a ${f.giorni}gg`).join(', ');
+  const descPag=pagFasce.map(f=>`${f.pct}% a ${f.giorni}gg`).join(', ');
+
+  const ctx = `SOCIETÀ: ${document.getElementById('tb-nome').textContent}
+ANNO BUDGET: ${P.anno}–${P.anno+1} | Crescita: +${P.cagr}%
+FATTURATO ${P.anno}: ${fE(Y1.fat)} | EBITDA: ${fE(Y1.ebitda)} (${pct(Y1.ebitda/Y1.fat*100)}) | Utile: ${fE(Y1.un)}
+FATTURATO ${P.anno+1}: ${fE(Y2.fat)} | EBITDA: ${fE(Y2.ebitda)} | Utile: ${fE(Y2.un)}
+CASSA: apertura ${fE(P.cassa)} → fine ${P.anno}: ${fE(liq1)} → fine ${P.anno+1}: ${fE(liq2)} | minimo: ${fE(minC)} (${meseMin?.label||'—'})
+INCASSO CLIENTI: ${descInc}
+PAGAMENTO FORNITORI: ${descPag}
+RATE PASSIVE: ${rateList.map(r=>r.nome+' €'+fE(r.importo)+'/mese').join(', ')||'nessuna'}
+CONDIZIONI CUSTOM: ${customList.map(c=>c.desc+' ('+c.tipo+')').join(', ')||'nessuna'}`;
+
+  const prompts = {
+    budget: `Sei un CFO senior con 25 anni su PMI italiane. Analizza questo budget in 4 parti:\n1. LETTURA DEL BUDGET — cosa dicono i numeri sulla traiettoria dell'azienda\n2. CASH FLOW CRITICO — dove sono i punti di pressione sulla liquidità\n3. RISCHI NASCOSTI — cosa potrebbe andare storto che i numeri non mostrano\n4. RACCOMANDAZIONE — 3 azioni concrete per il management\nTono diretto, preciso, niente frasi generiche. Min 400 parole.`,
+    cash: `Analizza il cash flow di questa azienda con occhio critico. Dove sono i mesi di rischio? Le fasce DSO/DPO sono sostenibili? Il buffer di cassa è adeguato al settore? Cosa succede se i clienti slittano di 15 giorni? Massimo 200 parole, molto preciso.`,
+    rischi: `Identifica i 5 rischi più rilevanti per questo budget. Per ognuno: probabilità, impatto sulla cassa, azione preventiva. Sii specifico sui numeri.`,
+    parametri: `Commenta i parametri finanziari di questa società. Le fasce DSO/DPO sono in linea con il settore? Il margine EBITDA è sostenibile? C'è qualcosa nei parametri che segnala inefficienze strutturali?`
+  };
+
+  const titoloMap = {budget:'Analisi Budget Completa', cash:'Cash Flow Critico', rischi:'Rischi e Opportunità', parametri:'Commento Parametri'};
+  const prompt = `${prompts[tipo]}\n\n${ctx}\n\nRispondi in italiano.`;
+  await callAI(prompt, titoloMap[tipo]||'Analisi');
+}
+
+async function aiDomanda() {
+  const q = document.getElementById('ai-lat-inp').value.trim();
+  if (!q) return;
+  document.getElementById('ai-lat-inp').value = '';
+  const {Y1,Y2,rows} = CALC;
+  const ctx = `BUDGET ${document.getElementById('tb-nome').textContent} ${P.anno}–${P.anno+1}: Fat ${fE(Y1.fat)}, EBITDA ${fE(Y1.ebitda)}, Utile ${fE(Y1.un)}, Cassa fine anno ${fE(rows[11]?.cassa||0)}`;
+  await callAI(`${q}\n\nContesto budget: ${ctx}`, 'Risposta CFO');
+}
+
+var _aiPanelOpen = false;
+
+function openAIPanel() { _aiPanelOpen=true; document.getElementById('ai-lateral-b').classList.add('on'); document.getElementById('ai-fab-b').classList.add('open'); }
+function closeAIPanel() { _aiPanelOpen=false; document.getElementById('ai-lateral-b').classList.remove('on'); document.getElementById('ai-fab-b').classList.remove('open'); }
+function toggleAIPanel() { _aiPanelOpen ? closeAIPanel() : openAIPanel(); }
+function resetAIPanel() {
+  document.getElementById('ai-lat-body').innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;color:#8888aa;font-size:0.63rem;line-height:2">Il Narratore legge i parametri del budget attivo<br>e risponde come un CFO senior con 25 anni di esperienza.<br><br><button onclick="aiAnalisi(\'budget\')" style="background:#5b3d8f;color:#fff;border:none;border-radius:4px;padding:0.65rem 1.5rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.14em;cursor:pointer">▶ Avvia Analisi</button></div>';
+}
+
+function _md(t){
+  if(!t) return '';
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^#{3}\s+(.+)$/gm,'<span style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#5b3d8f;display:block;margin-top:0.8rem">$1</span>')
+    .replace(/^#{1,2}\s+(.+)$/gm,'<span style="font-size:1rem;font-weight:700;color:#3d2860;display:block;margin-top:0.6rem">$1</span>')
+    .replace(/\n\n/g,'</p><p style="margin:0.6rem 0 0">')
+    .replace(/\n/g,'<br>');
+}
+
+async function callAI(prompt, titoloLabel) {
+  openAIPanel();
+  const body = document.getElementById('ai-lat-body');
+  const b = document.createElement('div');
+  b.className = 'ai-lat-block risp';
+  b.innerHTML = '<div class="ai-lat-block-label"><span>◆ ' + (titoloLabel||'Superrisponditore') + '</span><span style="color:#8888aa;font-weight:400">...</span></div>' +
+    '<div class="ai-lat-block-content" style="color:#8888aa;font-style:italic;font-size:0.75rem">Il Narratore sta elaborando</div>';
+  body.appendChild(b);
+  body.scrollTop = 99999;
+  try {
+    const r = await fetch('/api/ai/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt})
+    });
+    const d = await r.json();
+    const text = d.text || 'Nessuna risposta.';
+    b.querySelector('.ai-lat-block-label span:last-child').textContent = '✓ Completato';
+    b.querySelector('.ai-lat-block-content').innerHTML = _md(text);
+    body.scrollTop = 99999;
+  } catch(e) {
+    b.querySelector('.ai-lat-block-content').innerHTML = '<span style="color:#c0392b">Errore: ' + e.message + '</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGAZIONE
+// ═══════════════════════════════════════════════════════════
+function showTab(id, btn) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
