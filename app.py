@@ -9,10 +9,13 @@ from config import Config
 from models import db, User, Client, CapsuleConfig, AISession
 import os, hashlib
 
+from routes_dati import register_routes_dati
+
 app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 db.init_app(app)
+register_routes_dati(app)
 
 # ════════════════════════════════════════════════════════════════════════════
 # HELPER
