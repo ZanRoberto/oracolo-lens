@@ -1,968 +1,508 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Budget 2025–2026 · Viplastic SRL</title>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #fafaf8;
-  --ink: #1c1c1e;
-  --viola: #5b3d8f;
-  --viola-l: #8b6cc0;
-  --viola-bg: #f2eefb;
-  --gold: #7a5c1e;
-  --gold-bg: #fdf8ee;
-  --green: #1a6b3a;
-  --green-bg: #edf7f2;
-  --red: #8b1c1c;
-  --red-bg: #fdf0f0;
-  --border: #e0ddd6;
-  --border2: #ccc9c0;
-  --t2: #5a5a5a;
-  --t3: #999;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.6}
+"""
+CAPSULE MANAGER — V1.0
+Il cavo mancante tra Oracle Auto e il bot.
 
-.header{background:var(--viola);color:#fff;padding:1.6rem 2.5rem;display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:end}
-.header-title{font-family:'Libre Baskerville',serif;font-size:1.5rem;font-weight:700}
-.header-sub{font-size:0.6rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.18em;margin-top:0.3rem}
-.header-meta{text-align:right;font-size:0.6rem;color:rgba(255,255,255,0.6)}
-.header-meta strong{color:#fff;display:block;font-size:0.72rem;margin-bottom:0.15rem}
+RUOLO:
+  Oracle inserisce SuperCapsule nella tabella 'capsule' del DB SQLite.
+  Il bot chiama CapsuleManager.valuta(contesto) ad ogni tick.
+  CapsuleManager legge dal DB, valuta i trigger, ritorna l'azione.
 
-.assumptions{background:var(--gold-bg);border-bottom:2px solid var(--border);padding:0.7rem 2.5rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
-.aitem{font-size:0.6rem;color:var(--t2)}
-.aitem strong{color:var(--gold);font-weight:600}
+INTERFACCIA ATTESA DAL BOT:
+  CapsuleManager(db_path, asset)
+  .valuta(ctx) → {blocca, reason, soglia_delta, size_mult, profit_lock_min}
+  .get_stats()  → {attive, auto, static, learned, scadono_presto, trade_osservati}
+  .get_active_capsules() → lista capsule attive per dashboard
 
-.tabs{background:#fff;border-bottom:2px solid var(--border);padding:0 2.5rem;display:flex}
-.tab{padding:0.75rem 1.4rem;background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--t3);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
-.tab.active{color:var(--viola);border-bottom-color:var(--viola);font-weight:500}
-.tab:hover:not(.active){color:var(--ink)}
+TABELLA DB (creata da oracle_auto._apply_capsule):
+  capsule (id, asset, livello, tipo, trigger_json, azione_json,
+           priority, enabled, samples, wr, pnl_avg,
+           created_ts, scade_ts, hits, hits_saved, note)
 
-.view{display:none;padding:1.8rem 2.5rem}
-.view.active{display:block}
+TRIGGER FIELDS (nomi esatti usati dal bot e Oracle):
+  momentum, volatility, trend, regime, direction, drift_pct, oi_stato
 
-.sec-title{font-family:'Libre Baskerville',serif;font-size:1rem;font-weight:400;color:var(--viola);margin-bottom:0.2rem}
-.sec-sub{font-size:0.58rem;color:var(--t3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:1.2rem}
+AZIONI (nomi esatti dal prompt L2):
+  BLOCCA_ENTRY      → blocca completamente l'entry
+  ALZA_SOGLIA       → aggiunge N punti alla soglia
+  ABBASSA_SOGLIA    → sottrae N punti dalla soglia
+  ALZA_SOGLIA_USCITA → imposta profit_lock_min per l'exit
 
-/* KPI */
-.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:1.5rem}
-.kpi-cell{background:#fff;padding:1rem 1.1rem}
-.kl{font-size:0.5rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--t3);margin-bottom:0.25rem}
-.kv{font-family:'Libre Baskerville',serif;font-size:1.15rem}
-.kv.vio{color:var(--viola)} .kv.up{color:var(--green)} .kv.dn{color:var(--red)}
-.kd{font-size:0.53rem;margin-top:0.15rem;color:var(--t3)}
-.kd.up{color:var(--green)} .kd.dn{color:var(--red)}
+FLOOR DINAMICO:
+  - Capsule STATIC (dati storici): floor 48 rispettato
+  - Capsule AUTO (Oracle con evidenza reale): floor 40
+  - Capsule AUTO con priority >= 9 (pattern confermato): floor 35
+  
+  Razionale: il floor 48 è per proteggere da capsule non calibrate.
+  Oracle ha già verificato con Phantom e dati reali — può andare più in basso.
 
-/* TABELLE */
-.tbl{width:100%;border-collapse:collapse;margin-bottom:2rem;font-size:0.63rem}
-.tbl thead tr th{padding:0.5rem 0.7rem;text-align:right;font-size:0.5rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--t3);border-bottom:2px solid var(--ink);font-weight:500;white-space:nowrap}
-.tbl thead tr th:first-child{text-align:left;min-width:190px}
-.tbl thead tr th.y25{background:var(--viola-bg);color:var(--viola)}
-.tbl thead tr th.y26{background:var(--gold-bg);color:var(--gold)}
-.tbl thead tr th.tot{background:var(--ink);color:#fff}
-.tbl tbody tr td{padding:0.4rem 0.7rem;text-align:right;border-bottom:1px solid var(--border);color:var(--t2)}
-.tbl tbody tr td:first-child{text-align:left;color:var(--ink);font-size:0.6rem}
-.tbl tr.sub td{background:var(--viola-bg);color:var(--viola);font-weight:600;border-top:1px solid var(--border2)}
-.tbl tr.tot-row td{background:var(--viola);color:#fff;font-weight:700;font-size:0.68rem}
-.tbl tr.sec td{background:var(--ink);color:#fff;font-size:0.5rem;text-transform:uppercase;letter-spacing:0.14em;padding:0.4rem 0.7rem;font-weight:500}
-.tbl tr.sp td{padding:0.25rem;background:var(--bg);border:none}
-.tbl tr.fisso td:first-child::after{content:' ◆';color:var(--gold);font-size:0.45rem}
-.tbl tr:hover:not(.tot-row):not(.sub):not(.sec):not(.sp) td{background:#f8f6ff}
-.pos{color:var(--green)!important;font-weight:500}
-.neg{color:var(--red)!important;font-weight:500}
+RELOAD:
+  Il DB viene riletto ogni 60s o ad ogni cambio (hash check).
+  Zero deploy — Oracle inserisce, bot legge al prossimo tick.
+"""
 
-/* MENSILE SCROLL */
-.scroll{overflow-x:auto}
-.mtbl{width:100%;border-collapse:collapse;font-size:0.59rem;min-width:1400px}
-.mtbl th{padding:0.42rem 0.5rem;text-align:right;font-size:0.48rem;text-transform:uppercase;letter-spacing:0.08em;border-bottom:2px solid var(--ink);white-space:nowrap;font-weight:500}
-.mtbl th:first-child{text-align:left;min-width:155px;position:sticky;left:0;background:#fff;z-index:2}
-.mtbl th.y25{background:var(--viola-bg);color:var(--viola)}
-.mtbl th.y26{background:var(--gold-bg);color:var(--gold)}
-.mtbl th.tot{background:var(--ink);color:#fff}
-.mtbl td{padding:0.33rem 0.5rem;text-align:right;border-bottom:1px solid var(--border);color:var(--t2)}
-.mtbl td:first-child{text-align:left;color:var(--ink);position:sticky;left:0;background:#fff;z-index:1;font-size:0.55rem}
-.mtbl tr.sub td{background:var(--viola-bg);color:var(--viola);font-weight:600}
-.mtbl tr.sub td:first-child{background:var(--viola-bg)}
-.mtbl tr.tot-row td{background:var(--viola);color:#fff;font-weight:700}
-.mtbl tr.tot-row td:first-child{background:var(--viola)}
-.mtbl tr.sp td{padding:0.18rem;background:var(--bg);border:none}
-.mtbl tr.sec td{background:var(--ink);color:#fff;font-size:0.48rem;text-transform:uppercase;letter-spacing:0.1em;font-weight:500}
-.mtbl tr.sec td:first-child{background:var(--ink)}
-.mtbl tr:hover:not(.tot-row):not(.sub):not(.sec):not(.sp) td{background:#f8f6ff}
-.mtbl tr:hover:not(.tot-row):not(.sub):not(.sec):not(.sp) td:first-child{background:#f8f6ff}
+import sqlite3
+import json
+import time
+import os
+import hashlib
+import logging
+import operator
 
-/* FIN NOTE */
-.fin-note{background:var(--gold-bg);border:1px solid var(--border2);border-left:3px solid var(--gold);padding:0.8rem 1rem;font-size:0.63rem;color:var(--t2);margin-bottom:1.5rem;border-radius:0 4px 4px 0}
-.fin-note strong{color:var(--gold)}
+log = logging.getLogger(__name__)
 
-/* CHART */
-.chart-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
-.chart-card{background:#fff;border:1px solid var(--border);border-radius:6px;padding:1rem}
-.chart-lbl{font-size:0.5rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--t3);margin-bottom:0.8rem}
-.bars{display:flex;align-items:flex-end;gap:3px;height:80px}
-.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
-.b{width:100%;border-radius:2px 2px 0 0;min-height:2px}
-.bl{font-size:0.44rem;color:var(--t3)}
-.trend{font-size:0.6rem;margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:var(--t2)}
-
-.watermark{position:fixed;bottom:0.8rem;right:1.5rem;font-size:0.5rem;color:var(--border2);text-transform:uppercase;letter-spacing:0.1em}
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div>
-    <div class="header-title">Budget Economico e Finanziario 2025–2026</div>
-    <div class="header-sub">Viplastic S.r.l. · Fabbricazione Articoli in Materie Plastiche · ATECO 222</div>
-  </div>
-  <div class="header-meta">
-    <strong>Documento Riservato · Uso Interno</strong>
-    Elaborato il <span id="hdate"></span><br>
-    Base storica: 2018–2022 (5 esercizi)
-  </div>
-</div>
-
-<div class="assumptions">
-  <div class="aitem">Fatturato 2025: <strong>€30.000.000 CONSUNTIVO REALE</strong> · Budget 2026: <strong>+12% = €33.600.000</strong></div>
-  <div class="aitem">Costi variabili: <strong>87,6% fatturato</strong> (media ultimi 2 esercizi)</div>
-  <div class="aitem">Costi fissi: <strong>invariati</strong> — Personale €1.466K · Ammortamenti €1.198K</div>
-  <div class="aitem">Interessi passivi: <strong>€121K anno</strong> (stabili)</div>
-  <div class="aitem">Aliquota fiscale effettiva: <strong>19,2%</strong></div>
-  <div class="aitem">Incasso clienti: <strong>75 gg</strong> · Pagamento fornitori: <strong>90 gg</strong> · Mutuo impianti: <strong>€50.000/mese</strong> · Saldo banche 01/01/2025: <strong>€850.000</strong> · IVA: <strong>22% liquidazione mensile</strong></div>
-</div>
-
-<div class="tabs">
-  <button class="tab active" onclick="showTab('ce','Conto Economico',this)">Conto Economico</button>
-  <button class="tab" onclick="showTab('mensile','Mensile',this)">Dettaglio Mensile</button>
-  <button class="tab" onclick="showTab('fin','Finanziario',this)">Budget Finanziario</button>
-  <button class="tab" onclick="showTab('grafici','Grafici',this)">Grafici</button>
-</div>
-
-<div id="view-ce" class="view active"></div>
-<div id="view-mensile" class="view"></div>
-<div id="view-fin" class="view"></div>
-<div id="view-grafici" class="view"></div>
-
-<div class="watermark">Viplastic SRL · 2025 Consuntivo + 2026 Budget · Riservato</div>
-
-<script>
-// ── PARAMETRI ──────────────────────────────────────────────
-const CAGR    = 0.12;
-const CV_PCT  = 0.876;
-const SALARI  = 1466422;
-const AMM     = 1197942;
-const INTERESSI = 120691;
-const ALIQ    = 0.192;
-const MUTUO_RATA = 50000; // Rata mensile mutuo acquisto impianti 2025-2026
-const IVA = 0.22;          // Aliquota IVA ordinaria 22%
-const FAT_2022 = 32926202;
-const LIQ_2022 = 850000; // Saldo banche reale 01/01/2025
-const CREDITI_2022 = 10543667;
-
-// Storico
-const STORICO = [
-  {anno:'2018',fat:18060582,cv:15271004,salari:859256,amm:758834,interessi:78944,un:804521,liq:1091149},
-  {anno:'2019',fat:16900205,cv:14112400,salari:884431,amm:881676,interessi:87542,un:742338,liq:308609},
-  {anno:'2020',fat:16473587,cv:13807116,salari:833142,amm:931914,interessi:85966,un:673404,liq:1024347},
-  {anno:'2021',fat:27475810,cv:23747600,salari:1169542,amm:987162,interessi:79657,un:1121586,liq:1870580},
-  {anno:'2022',fat:32926202,cv:29236633,salari:1466422,amm:1197942,interessi:120691,un:851422,liq:878678},
-];
-
-// ── CALCOLO ANNI ──────────────────────────────────────────
-function calcAnno(fat) {
-  const cv = fat * CV_PCT;
-  const mg = fat - cv;
-  const ebitda = mg - SALARI;
-  const ebit = ebitda - AMM;
-  const uat = ebit - INTERESSI;
-  const imp = uat > 0 ? uat * ALIQ : 0;
-  const un = uat - imp;
-  return {fat, cv, mg, ebitda, ebit, uat, imp, un};
+OPS = {
+    '>':      operator.gt,
+    '>=':     operator.ge,
+    '<':      operator.lt,
+    '<=':     operator.le,
+    '==':     operator.eq,
+    '!=':     operator.ne,
+    'in':     lambda a, b: a in b,
+    'not_in': lambda a, b: a not in b,
 }
 
-// Proiezione: base 2022, crescita +12% ogni anno
-// 2025: fatturato CONSUNTIVO reale €30.000.000
-// 2026: budget +12% su base reale 2025
-const FAT = {
-  2023: FAT_2022 * Math.pow(1+CAGR, 1),
-  2024: FAT_2022 * Math.pow(1+CAGR, 2),
-  2025: 30000000,   // CONSUNTIVO REALE
-  2026: 30000000 * (1+CAGR),  // budget +12% su base reale
-};
-
-const Y25 = calcAnno(FAT[2025]);
-const Y26 = calcAnno(FAT[2026]);
-
-// ── PESI MENSILI (stagionalità plastica industriale) ───────
-const PESI = [0.075,0.072,0.085,0.088,0.090,0.092,0.080,0.075,0.090,0.095,0.085,0.073];
-const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-
-function mesiAnno(anno_val, anno_label) {
-  const d = calcAnno(anno_val);
-  return PESI.map((p, i) => {
-    const fat = d.fat * p;
-    const cv  = fat * CV_PCT;
-    const mg  = fat - cv;
-    const ebitda = mg - SALARI/12;
-    const ebit = ebitda - AMM/12;
-    const uat = ebit - INTERESSI/12;
-    const imp = uat > 0 ? uat * ALIQ : 0;
-    const un  = uat - imp;
-    return {mese:MESI[i], anno:anno_label, fat, cv, salari:SALARI/12, amm:AMM/12,
-            int:INTERESSI/12, mg, ebitda, ebit, uat, imp, un};
-  });
-}
-
-const M25 = mesiAnno(FAT[2025], '2025');
-const M26 = mesiAnno(FAT[2026], '2026');
-
-// ── FORMAT ────────────────────────────────────────────────
-const r0 = n => Math.round(n);
-const f0 = n => {
-  if(n===0) return '—';
-  const abs = Math.abs(n);
-  const s = abs.toLocaleString('it-IT',{maximumFractionDigits:0});
-  return n < 0 ? '('+s+')' : s;
-};
-const fE = n => f0(r0(n));
-const fP = n => (n*100).toFixed(1)+'%';
-const cls = n => n<0?'neg':n>0?'pos':'';
-const sign = n => (n>=0?'+':'')+f0(r0(n));
-
-// ── CONTO ECONOMICO ───────────────────────────────────────
-function renderCE() {
-  const s22 = STORICO[4];
-  const un22 = s22.fat-s22.cv-s22.salari-s22.amm-s22.interessi;
-  const uat22 = un22/(1-ALIQ);
-
-  // KPI
-  const kpis = [
-    {l:'Fatturato 2025', v:fE(Y25.fat), d:'+12% vs 2024', dc:'up'},
-    {l:'Fatturato 2026', v:fE(Y26.fat), d:'+12% vs 2025', dc:'up'},
-    {l:'EBITDA 2025',    v:fE(Y25.ebitda), d:fP(Y25.ebitda/Y25.fat)+' margine', dc:''},
-    {l:'EBITDA 2026',    v:fE(Y26.ebitda), d:fP(Y26.ebitda/Y26.fat)+' margine', dc:''},
-    {l:'Utile Netto 2025',v:fE(Y25.un), d:fP(Y25.un/Y25.fat), dc:'up'},
-    {l:'Utile Netto 2026',v:fE(Y26.un), d:fP(Y26.un/Y26.fat), dc:'up'},
-  ];
-
-  let html = '<div class="sec-title">Conto Economico Previsionale</div>';
-  html += '<div class="sec-sub">2025 = Consuntivo reale €30M · 2026 = Budget +12% su base reale · Confronto con storico 2022 · Costi fissi invariati (◆)</div>';
-  html += '<div class="kpi-row">' + kpis.map(k=>`<div class="kpi-cell"><div class="kl">${k.l}</div><div class="kv vio">${k.v}</div><div class="kd ${k.dc}">${k.d}</div></div>`).join('') + '</div>';
-
-  // Tabella CE
-  const rows = [
-    {t:'sec', l:'A — RICAVI'},
-    {t:'row', l:'Ricavi netti di vendita',         v22:s22.fat,       v25:Y25.fat,    v26:Y26.fat},
-    {t:'sub', l:'TOTALE RICAVI',                   v22:s22.fat,       v25:Y25.fat,    v26:Y26.fat},
-    {t:'sp'},
-    {t:'sec', l:'B — COSTI VARIABILI'},
-    {t:'row', l:'Acquisti mat. prime e servizi',    v22:s22.cv,        v25:Y25.cv,     v26:Y26.cv},
-    {t:'sub', l:'MARGINE LORDO  (A − B)',           v22:s22.fat-s22.cv,v25:Y25.mg,    v26:Y26.mg},
-    {t:'sp'},
-    {t:'sec', l:'C — COSTI FISSI (INVARIATI ◆)'},
-    {t:'fis', l:'Costo del personale',              v22:s22.salari,    v25:SALARI,     v26:SALARI},
-    {t:'sub', l:'EBITDA  (Marg.Lordo − Personale)',v22:s22.fat-s22.cv-s22.salari, v25:Y25.ebitda, v26:Y26.ebitda},
-    {t:'fis', l:'Ammortamenti e svalutazioni',      v22:s22.amm,       v25:AMM,        v26:AMM},
-    {t:'sub', l:'EBIT — Utile Operativo',           v22:s22.fat-s22.cv-s22.salari-s22.amm, v25:Y25.ebit, v26:Y26.ebit},
-    {t:'sp'},
-    {t:'sec', l:'D — GESTIONE FINANZIARIA'},
-    {t:'fis', l:'Interessi passivi',                v22:s22.interessi, v25:INTERESSI,  v26:INTERESSI},
-    {t:'sub', l:'UTILE ANTE IMPOSTE',               v22:s22.fat-s22.cv-s22.salari-s22.amm-s22.interessi, v25:Y25.uat, v26:Y26.uat},
-    {t:'sp'},
-    {t:'sec', l:'E — IMPOSTE'},
-    {t:'row', l:'Imposte sul reddito (19,2%)',      v22:s22.un-( s22.fat-s22.cv-s22.salari-s22.amm-s22.interessi), v25:Y25.imp, v26:Y26.imp},
-    {t:'tot', l:'UTILE NETTO D\'ESERCIZIO',         v22:s22.un,        v25:Y25.un,     v26:Y26.un},
-    {t:'sp'},
-    {t:'sec', l:'F — INDICATORI DI REDDITIVITÀ'},
-    {t:'pct', l:'Margine EBITDA %',                 v22:(s22.fat-s22.cv-s22.salari)/s22.fat, v25:Y25.ebitda/Y25.fat, v26:Y26.ebitda/Y26.fat},
-    {t:'pct', l:'Margine operativo (EBIT) %',       v22:(s22.fat-s22.cv-s22.salari-s22.amm)/s22.fat, v25:Y25.ebit/Y25.fat, v26:Y26.ebit/Y26.fat},
-    {t:'pct', l:'Margine netto %',                  v22:s22.un/s22.fat, v25:Y25.un/Y25.fat, v26:Y26.un/Y26.fat},
-    {t:'pct', l:'Incidenza costi variabili %',      v22:s22.cv/s22.fat, v25:Y25.cv/Y25.fat, v26:Y26.cv/Y26.fat},
-    {t:'pct', l:'Incidenza costi fissi % (personale+amm)', v22:(s22.salari+s22.amm)/s22.fat, v25:(SALARI+AMM)/Y25.fat, v26:(SALARI+AMM)/Y26.fat},
-  ];
-
-  html += '<table class="tbl"><thead><tr>';
-  html += '<th>Voce</th><th>2022 — Storico</th>';
-  html += '<th class="y25">2025 — Budget</th><th class="y25">Var. vs 2022</th>';
-  html += '<th class="y26">2026 — Budget</th><th class="y26">Var. vs 2025</th>';
-  html += '</tr></thead><tbody>';
-
-  rows.forEach(r => {
-    if(r.t==='sp'){html+='<tr class="sp"><td colspan="6"></td></tr>';return;}
-    if(r.t==='sec'){html+=`<tr class="sec"><td colspan="6">${r.l}</td></tr>`;return;}
-    const tr = r.t==='tot'?'tot-row':r.t==='sub'?'sub':r.t==='fis'?'fisso':'';
-    const fv = r.t==='pct' ? v=>fP(v) : v=>fE(v);
-    const d25 = r.v25-r.v22, d26 = r.v26-r.v25;
-    const p25 = r.v22?((r.v25/r.v22-1)*100):0, p26 = r.v25?((r.v26/r.v25-1)*100):0;
-    const fd = (d,p,pct) => pct ? ((p>=0?'+':'')+p.toFixed(2)+'pp') : ((d>=0?'+':'')+fE(d)+' ('+(p>=0?'+':'')+p.toFixed(1)+'%)');
-    html+=`<tr class="${tr}">
-      <td>${r.l}</td>
-      <td>${fv(r.v22)}</td>
-      <td>${fv(r.v25)}</td>
-      <td class="${r.t==='pct'?cls(r.v25-r.v22):cls(d25)}">${fd(d25,p25,r.t==='pct')}</td>
-      <td>${fv(r.v26)}</td>
-      <td class="${r.t==='pct'?cls(r.v26-r.v25):cls(d26)}">${fd(d26,p26,r.t==='pct')}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('view-ce').innerHTML = html;
-}
-
-// ── MENSILE ───────────────────────────────────────────────
-function renderMensile() {
-  const voci = [
-    {l:'Ricavi di vendita',           k:'fat'},
-    {l:'− Costi variabili',           k:'cv',    neg:1},
-    {l:'MARGINE LORDO',               k:'mg',    sub:1},
-    {l:'− Costo del personale ◆',     k:'salari',neg:1,fis:1},
-    {l:'EBITDA',                       k:'ebitda',sub:1},
-    {l:'− Ammortamenti ◆',            k:'amm',   neg:1,fis:1},
-    {l:'EBIT (Utile Operativo)',       k:'ebit',  sub:1},
-    {l:'− Interessi passivi ◆',       k:'int',   neg:1,fis:1},
-    {l:'UTILE ANTE IMPOSTE',          k:'uat',   sub:1},
-    {l:'− Imposte sul reddito',        k:'imp',   neg:1},
-    {l:'UTILE NETTO',                  k:'un',    tot:1},
-  ];
-
-  const tot25 = {}, tot26 = {};
-  voci.forEach(v => {
-    tot25[v.k] = M25.reduce((s,m)=>s+m[v.k],0);
-    tot26[v.k] = M26.reduce((s,m)=>s+m[v.k],0);
-  });
-
-  let html = '<div class="sec-title">Dettaglio Mensile 2025 e 2026</div>';
-  html += '<div class="sec-sub">Distribuzione mensile con stagionalità settore · ◆ = costo fisso ripartito uniformemente</div>';
-  html += '<div class="scroll"><table class="mtbl"><thead><tr>';
-  html += '<th>Voce</th>';
-  MESI.forEach(m=>html+=`<th class="y25">${m}&rsquo;25</th>`);
-  html += '<th class="tot">Tot.2025</th>';
-  MESI.forEach(m=>html+=`<th class="y26">${m}&rsquo;26</th>`);
-  html += '<th class="tot">Tot.2026</th></tr></thead><tbody>';
-
-  voci.forEach(v => {
-    const tr = v.tot?'tot-row':v.sub?'sub':v.fis?'fisso':'';
-    const c25 = M25.map(m=>`<td class="${m[v.k]<0?'neg':''}">${fE(m[v.k])}</td>`).join('');
-    const c26 = M26.map(m=>`<td class="${m[v.k]<0?'neg':''}">${fE(m[v.k])}</td>`).join('');
-    html+=`<tr class="${tr}"><td>${v.l}</td>${c25}<td>${fE(tot25[v.k])}</td>${c26}<td>${fE(tot26[v.k])}</td></tr>`;
-  });
-
-  html += '</tbody></table></div>';
-  document.getElementById('view-mensile').innerHTML = html;
-}
-
-// ── BUDGET FINANZIARIO ────────────────────────────────────
-function renderFinanziario() {
-  // Costruiamo lo sfasamento:
-  // Incassi clienti 75gg ≈ 2,5 mesi → media di M-2 e M-3
-  // Pagamento fornitori 90gg ≈ 3 mesi → M-3
-  // Per sfasamento iniziale usiamo gli ultimi mesi del 2024 (proiettati)
-  const M24 = mesiAnno(FAT[2024], '2024');
-  const SEQ_FAT = [...M24.map(m=>m.fat), ...M25.map(m=>m.fat), ...M26.map(m=>m.fat)];
-  const SEQ_CV  = [...M24.map(m=>m.cv),  ...M25.map(m=>m.cv),  ...M26.map(m=>m.cv)];
-  // Offset: M24 occupa indici 0-11, M25 = 12-23, M26 = 24-35
-  // Per mese i in M25 (i=0..11), indice in SEQ = i+12
-  // Per mese i in M26 (i=0..11), indice in SEQ = i+24
-
-  let cassa = LIQ_2022; // Usiamo chiusura 2022 come proxy apertura 2025
-  // Nota: in realtà la cassa 2025 dipende dagli esercizi 2023-2024 non disponibili
-  // Usiamo la cassa 2022 come valore di apertura per mantenere coerenza con i dati disponibili
-
-  const rows = [];
-  const allMesi = [...M25, ...M26];
-
-  allMesi.forEach((m, i) => {
-    // i=0..11 → 2025, i=12..23 → 2026
-    const seqIdx = i < 12 ? i+12 : i+12; // offset in SEQ_FAT (12 mesi 2024 prima)
-
-    // Incasso = media fat[seqIdx-2] e fat[seqIdx-3]
-    const inc2 = SEQ_FAT[seqIdx-2] || 0;
-    const inc3 = SEQ_FAT[seqIdx-3] || 0;
-    const incasso = (inc2 + inc3) / 2;
-
-    // Pagamento fornitori = cv[seqIdx-3]
-    const pag_for = SEQ_CV[seqIdx-3] || 0;
-
-    // Costi fissi pagati nel mese
-    const pag_sal = SALARI / 12;
-    const pag_int = INTERESSI / 12;
-
-    // Imposte: acconto giugno (40%) e saldo+acconto novembre (60%) — IRES italiana
-    const imp_anno = i < 12 ? Y25.imp : Y26.imp;
-    const pag_imp = (i===4||i===16) ? imp_anno*0.40 : (i===10||i===22) ? imp_anno*0.60 : 0;
-
-    const tot_in  = incasso;
-    const pag_mutuo = MUTUO_RATA; // rata mensile mutuo impianti
-
-    // IVA — liquidazione mensile (versamento entro 16 mese successivo)
-    // IVA incassata = su fatturato sfasato 75gg (stessa base degli incassi)
-    const iva_incassata = incasso * IVA;
-    // IVA pagata fornitori = su CV sfasati 90gg (stessa base pagamenti fornitori)
-    const iva_pagata_for = pag_for * IVA;
-    // Saldo IVA: se positivo = versamento allo Stato; se negativo = credito IVA
-    const saldo_iva = iva_incassata - iva_pagata_for;
-    const vers_iva  = saldo_iva > 0 ? saldo_iva : 0;   // uscita
-    const cred_iva  = saldo_iva < 0 ? -saldo_iva : 0;  // entrata (rimborso/compensazione)
-
-    const tot_out = pag_for + pag_sal + pag_int + pag_imp + pag_mutuo + vers_iva;
-    const tot_in_tot = tot_in + cred_iva; // incassi + eventuale credito IVA recuperato
-    const saldo   = tot_in_tot - tot_out;
-    cassa += saldo;
-
-    rows.push({
-      label: m.mese + (m.anno==='2025' ? ' 2025' : ' 2026'),
-      anno: m.anno,
-      incasso, pag_for, pag_sal, pag_int, pag_imp, pag_mutuo,
-      iva_incassata, iva_pagata_for, vers_iva, cred_iva, saldo_iva,
-      tot_in: tot_in_tot, tot_out, saldo, cassa
-    });
-  });
-
-  // KPI
-  const liq25 = rows[11].cassa;
-  const liq26 = rows[23].cassa;
-  const saldo25 = rows.slice(0,12).reduce((s,r)=>s+r.saldo,0);
-  const saldo26 = rows.slice(12).reduce((s,r)=>s+r.saldo,0);
-  const minC = Math.min(...rows.map(r=>r.cassa));
-  const meseMin = rows.find(r=>r.cassa===minC);
-
-  let html = '<div class="sec-title">Budget Finanziario — Flussi di Cassa Mensili</div>';
-  html += '<div class="sec-sub">Incasso clienti 75 giorni · Pagamento fornitori 90 giorni · Costi fissi pagati per competenza</div>';
-
-  html += `<div class="fin-note"><strong>Metodologia:</strong>
-  Incassi = media del fatturato dei mesi M−2 e M−3 (dilazione media 75 giorni).
-  Pagamenti fornitori = costi variabili del mese M−3 (dilazione 90 giorni).
-  Personale e interessi pagati nel mese di competenza.
-  Imposte IRES: acconto 40% in giugno, saldo+acconto 60% in novembre.
-  Saldo banche al 01/01/2025: <strong>€850.000</strong>. Mutuo passivo per acquisto impianti: <strong>€50.000/mese</strong>. IVA ordinaria 22%: liquidazione mensile — versamento/credito calcolato sulla differenza tra IVA incassata dai clienti (sfasata 75gg) e IVA pagata ai fornitori (sfasata 90gg). Il fatturato 2025 è <strong>consuntivo reale €30.000.000</strong>; il 2026 è budget +12% sulla base reale.
-  </div>`;
-
-  html += '<div class="kpi-row">';
-  html += `<div class="kpi-cell"><div class="kl">Cassa apertura 2025</div><div class="kv vio">${fE(LIQ_2022)}</div><div class="kd">Chiusura 2022</div></div>`;
-  html += `<div class="kpi-cell"><div class="kl">Cassa fine 2025</div><div class="kv ${liq25>LIQ_2022?'up':'dn'}">${fE(liq25)}</div><div class="kd ${saldo25>=0?'up':'dn'}">Saldo anno: ${sign(saldo25)}</div></div>`;
-  html += `<div class="kpi-cell"><div class="kl">Cassa fine 2026</div><div class="kv ${liq26>liq25?'up':'dn'}">${fE(liq26)}</div><div class="kd ${saldo26>=0?'up':'dn'}">Saldo anno: ${sign(saldo26)}</div></div>`;
-  html += `<div class="kpi-cell"><div class="kl">Cassa minima</div><div class="kv ${minC<0?'dn':minC<500000?'':'up'}">${fE(minC)}</div><div class="kd">${meseMin.label}</div></div>`;
-  html += `<div class="kpi-cell"><div class="kl">Incassi totali 2025</div><div class="kv vio">${fE(rows.slice(0,12).reduce((s,r)=>s+r.incasso,0))}</div><div class="kd">75gg dilazione</div></div>`;
-  html += `<div class="kpi-cell"><div class="kl">Incassi totali 2026</div><div class="kv vio">${fE(rows.slice(12).reduce((s,r)=>s+r.incasso,0))}</div><div class="kd">75gg dilazione</div></div>`;
-  html += '</div>';
-
-  // Tabella finanziaria
-  html += '<div class="scroll"><table class="mtbl"><thead><tr>';
-  html += '<th>Mese</th><th class="y25">Incassi + IVA</th><th class="y25">Pagam. fornitori</th><th class="y25">Personale</th><th class="y25">Interessi</th><th class="y25">Mutuo impianti</th><th class="y25">Liq. IVA</th><th class="y25">Imposte</th><th class="tot">Totale uscite</th><th class="tot">Saldo mese</th><th class="tot">Cassa progressiva</th></tr></thead><tbody>';
-
-  let prevAnno = '';
-  rows.forEach((r,i) => {
-    if(r.anno !== prevAnno) {
-      html += `<tr class="sec"><td colspan="9">── ${r.anno} ──</td></tr>`;
-      prevAnno = r.anno;
-    }
-    const sc = r.saldo >= 0 ? 'pos' : 'neg';
-    const cc = r.cassa < 0 ? 'neg' : r.cassa < 300000 ? '' : 'pos';
-    html += `<tr>
-      <td>${r.label}</td>
-      <td class="pos" title="Imponibile: ${fE(r.incasso)} | IVA: ${fE(r.iva_incassata)}">${fE(r.tot_in)}</td>
-      <td class="neg">(${fE(r.pag_for)})</td>
-      <td class="neg">(${fE(r.pag_sal)})</td>
-      <td class="neg">(${fE(r.pag_int)})</td>
-      <td class="neg">(${fE(r.pag_mutuo)})</td>
-      <td class="${r.vers_iva>0?'neg':'pos'}" title="IVA vendite: ${fE(r.iva_incassata)} | IVA acquisti: (${fE(r.iva_pagata_for)})">${r.vers_iva>0?'('+fE(r.vers_iva)+')':'+'+fE(r.cred_iva)}</td>
-      <td class="${r.pag_imp>0?'neg':''}">${r.pag_imp>0?'('+fE(r.pag_imp)+')':'—'}</td>
-      <td class="neg">(${fE(r.tot_out)})</td>
-      <td class="${sc}">${(r.saldo>=0?'+':'')+fE(r.saldo)}</td>
-      <td class="${cc}" style="font-weight:600">${fE(r.cassa)}</td>
-    </tr>`;
-
-    if(i===11||i===23) {
-      const sl = rows.slice(i-11,i+1);
-      const tI=sl.reduce((s,x)=>s+x.incasso,0), tF=sl.reduce((s,x)=>s+x.pag_for,0);
-      const tS=sl.reduce((s,x)=>s+x.pag_sal,0), tIn=sl.reduce((s,x)=>s+x.pag_int,0);
-      const tM=sl.reduce((s,x)=>s+x.pag_mutuo,0);
-      const tIva=sl.reduce((s,x)=>s+x.vers_iva,0);
-      const tIm=sl.reduce((s,x)=>s+x.pag_imp,0), tO=sl.reduce((s,x)=>s+x.tot_out,0);
-      const tSa=sl.reduce((s,x)=>s+x.saldo,0);
-      html += `<tr class="tot-row">
-        <td>TOTALE ANNO</td>
-        <td>${fE(tI)}</td><td>(${fE(tF)})</td><td>(${fE(tS)})</td><td>(${fE(tIn)})</td>
-        <td>(${fE(tM)})</td>
-        <td>(${fE(tIva)})</td>
-        <td>${tIm>0?'('+fE(tIm)+')':'—'}</td><td>(${fE(tO)})</td>
-        <td>${(tSa>=0?'+':'')+fE(tSa)}</td>
-        <td style="font-weight:700">${fE(rows[i].cassa)}</td>
-      </tr><tr class="sp"><td colspan="11"></td></tr>`;
-    }
-  });
-
-  html += '</tbody></table></div>';
-  document.getElementById('view-fin').innerHTML = html;
-}
-
-// ── GRAFICI ───────────────────────────────────────────────
-function renderGrafici() {
-  const tutti = [
-    ...STORICO.map(s => {
-      const ebitda = s.fat-s.cv-s.salari;
-      return {anno:s.anno, fat:s.fat, ebitda, un:s.un, liq:s.liq, tipo:'storico'};
-    }),
-    {anno:'2023', fat:FAT[2023], ebitda:calcAnno(FAT[2023]).ebitda, un:calcAnno(FAT[2023]).un, liq:null, tipo:'intermedio'},
-    {anno:'2024', fat:FAT[2024], ebitda:calcAnno(FAT[2024]).ebitda, un:calcAnno(FAT[2024]).un, liq:null, tipo:'intermedio'},
-    {anno:'2025', fat:Y25.fat, ebitda:Y25.ebitda, un:Y25.un, liq:null, tipo:'budget'},
-    {anno:'2026', fat:Y26.fat, ebitda:Y26.ebitda, un:Y26.un, liq:null, tipo:'budget'},
-  ];
-
-  function bar(data, key, colors) {
-    const vals = data.map(t=>t[key]||0);
-    const max = Math.max(...vals);
-    return data.map(t => {
-      const h = max>0 ? Math.max(2,(t[key]||0)/max*75) : 2;
-      const col = t.tipo==='storico' ? colors[0] : t.tipo==='intermedio' ? colors[1] : colors[2];
-      return `<div class="bw"><div class="b" style="height:${h}px;background:${col}"></div><div class="bl">${t.anno}</div></div>`;
-    }).join('');
-  }
-
-  // Cassa mensile 2025-2026 (dal budget finanziario già calcolato)
-  // Ricarichiamo i dati FIN
-  const M24 = mesiAnno(FAT[2024], '2024');
-  const SEQ_FAT = [...M24.map(m=>m.fat),...M25.map(m=>m.fat),...M26.map(m=>m.fat)];
-  const SEQ_CV  = [...M24.map(m=>m.cv), ...M25.map(m=>m.cv), ...M26.map(m=>m.cv)];
-  let cassa = LIQ_2022;
-  const cassaMensile = [];
-  [...M25,...M26].forEach((m,i) => {
-    const idx = i+12;
-    const incasso = ((SEQ_FAT[idx-2]||0)+(SEQ_FAT[idx-3]||0))/2;
-    const pag_for = SEQ_CV[idx-3]||0;
-    const pag_sal = SALARI/12;
-    const pag_int = INTERESSI/12;
-    const imp_a = i<12?Y25.imp:Y26.imp;
-    const pag_imp = (i===4||i===16)?imp_a*0.40:(i===10||i===22)?imp_a*0.60:0;
-    cassa += incasso - pag_for - pag_sal - pag_int - pag_imp;
-    cassaMensile.push({label:m.mese+(m.anno==='2025'?'\'25':'\'26'), cassa, anno:m.anno});
-  });
-
-  const maxC = Math.max(...cassaMensile.map(r=>r.cassa));
-  const minC = Math.min(...cassaMensile.map(r=>r.cassa));
-  const cassaBars = cassaMensile.map((r,i) => {
-    const h = (maxC-minC)>0 ? Math.max(2,(r.cassa-minC)/(maxC-minC)*72+2) : 2;
-    const col = r.cassa<300000?'var(--red)':r.anno==='2025'?'var(--viola)':'var(--gold)';
-    return `<div class="bw"><div class="b" style="height:${h}px;background:${col}"></div><div class="bl">${i%3===0?r.label:''}</div></div>`;
-  }).join('');
-
-  // Legenda colori
-  const legend = `<div style="display:flex;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
-    <span style="font-size:0.6rem;color:var(--t2);display:flex;align-items:center;gap:0.4rem"><span style="width:10px;height:10px;background:#666;border-radius:2px;display:inline-block"></span>Storico 2018–2022</span>
-    <span style="font-size:0.6rem;color:var(--t2);display:flex;align-items:center;gap:0.4rem"><span style="width:10px;height:10px;background:var(--viola-l);border-radius:2px;display:inline-block"></span>Proiezione 2023–2024</span>
-    <span style="font-size:0.6rem;color:var(--t2);display:flex;align-items:center;gap:0.4rem"><span style="width:10px;height:10px;background:var(--viola);border-radius:2px;display:inline-block"></span>Budget 2025</span>
-    <span style="font-size:0.6rem;color:var(--t2);display:flex;align-items:center;gap:0.4rem"><span style="width:10px;height:10px;background:var(--gold);border-radius:2px;display:inline-block"></span>Budget 2026</span>
-  </div>`;
-
-  const lastD25 = ((Y25.fat-tutti[6].fat)/tutti[6].fat*100).toFixed(1);
-  const lastD26 = ((Y26.fat-Y25.fat)/Y25.fat*100).toFixed(1);
-
-  let html = '<div class="sec-title">Grafici e Tendenze</div>';
-  html += '<div class="sec-sub">Base storica 2018–2022 + proiezione 2023–2024 + budget 2025–2026</div>';
-  html += legend;
-  html += '<div class="chart-row">';
-
-  // Fatturato
-  html += `<div class="chart-card"><div class="chart-lbl">Fatturato</div>
-    <div class="bars">${bar(tutti,'fat',['#555','var(--viola-l)','var(--viola)'])}</div>
-    <div class="trend"><span>2025→2026</span><span style="color:var(--green);font-weight:600">+12,0%</span></div>
-  </div>`;
-
-  // EBITDA
-  html += `<div class="chart-card"><div class="chart-lbl">EBITDA</div>
-    <div class="bars">${bar(tutti,'ebitda',['#888','var(--viola-l)','var(--viola)'])}</div>
-    <div class="trend"><span>Margine 2025</span><span style="color:var(--viola);font-weight:600">${fP(Y25.ebitda/Y25.fat)}</span></div>
-  </div>`;
-
-  // Utile netto
-  html += `<div class="chart-card"><div class="chart-lbl">Utile Netto</div>
-    <div class="bars">${bar(tutti,'un',['#777','var(--viola-l)','var(--green)'])}</div>
-    <div class="trend"><span>Margine netto 2026</span><span style="color:var(--green);font-weight:600">${fP(Y26.un/Y26.fat)}</span></div>
-  </div>`;
-
-  // Cassa mensile
-  html += `<div class="chart-card"><div class="chart-lbl">Cassa Mensile Budget 2025–2026</div>
-    <div class="bars">${cassaBars}</div>
-    <div class="trend"><span>Min: ${fE(minC)}</span><span>Max: ${fE(maxC)}</span></div>
-  </div>`;
-
-  // Confronto margini
-  const margini = [
-    {l:'EBITDA% 2022', v:(STORICO[4].fat-STORICO[4].cv-STORICO[4].salari)/STORICO[4].fat*100, col:'#888'},
-    {l:'EBITDA% 2025', v:Y25.ebitda/Y25.fat*100, col:'var(--viola)'},
-    {l:'EBITDA% 2026', v:Y26.ebitda/Y26.fat*100, col:'var(--gold)'},
-    {l:'EBIT%   2025', v:Y25.ebit/Y25.fat*100,   col:'var(--viola-l)'},
-    {l:'Netto%  2025', v:Y25.un/Y25.fat*100,      col:'var(--green)'},
-    {l:'Netto%  2026', v:Y26.un/Y26.fat*100,      col:'var(--green)'},
-  ];
-  html += `<div class="chart-card"><div class="chart-lbl">Confronto Margini</div>
-    <div style="display:flex;flex-direction:column;gap:0.55rem;margin-top:0.3rem">
-      ${margini.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.58rem">
-        <span style="color:var(--t2)">${m.l}</span>
-        <div style="display:flex;align-items:center;gap:0.4rem">
-          <div style="width:${Math.max(4,m.v*3.5)}px;height:6px;background:${m.col};border-radius:2px"></div>
-          <span style="color:${m.col};font-weight:600">${m.v.toFixed(1)}%</span>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-
-  // Struttura costi 2025 vs 2026
-  html += `<div class="chart-card"><div class="chart-lbl">Struttura Costi su Fatturato</div>
-    <div style="margin-top:0.3rem">
-      ${[
-        {l:'Costi variabili',            v25:Y25.cv/Y25.fat*100, v26:Y26.cv/Y26.fat*100, col:'#c44'},
-        {l:'Personale (fisso)',           v25:SALARI/Y25.fat*100, v26:SALARI/Y26.fat*100, col:'#a67'},
-        {l:'Ammortamenti (fisso)',        v25:AMM/Y25.fat*100,    v26:AMM/Y26.fat*100,    col:'#88a'},
-        {l:'Interessi (fisso)',           v25:INTERESSI/Y25.fat*100,v26:INTERESSI/Y26.fat*100,col:'#aaa'},
-        {l:'Imposte',                     v25:Y25.imp/Y25.fat*100,v26:Y26.imp/Y26.fat*100,col:'#ca8'},
-        {l:'→ Utile netto',              v25:Y25.un/Y25.fat*100, v26:Y26.un/Y26.fat*100, col:'var(--green)'},
-      ].map(r=>`<div style="display:grid;grid-template-columns:130px 1fr 40px 1fr 40px;gap:0.3rem;align-items:center;font-size:0.55rem;padding:0.2rem 0;border-bottom:1px solid var(--border)">
-        <span style="color:var(--t2)">${r.l}</span>
-        <div style="height:5px;background:${r.col};border-radius:2px;width:${Math.max(2,r.v25)}%"></div>
-        <span style="color:${r.col};font-weight:600">${r.v25.toFixed(1)}%</span>
-        <div style="height:5px;background:${r.col};border-radius:2px;width:${Math.max(2,r.v26)}%;opacity:0.7"></div>
-        <span style="color:${r.col}">${r.v26.toFixed(1)}%</span>
-      </div>`).join('')}
-      <div style="display:flex;justify-content:space-between;font-size:0.5rem;color:var(--t3);margin-top:0.4rem"><span>← 2025</span><span>2026 →</span></div>
-    </div>
-  </div>`;
-
-  html += '</div>';
-  document.getElementById('view-grafici').innerHTML = html;
-}
-
-// ── NAVIGAZIONE ───────────────────────────────────────────
-function showTab(name, label, btn) {
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ── INIT ──────────────────────────────────────────────────
-document.getElementById('hdate').textContent = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
-renderCE();
-renderMensile();
-renderFinanziario();
-renderGrafici();
-// Legge ?view= dall'URL per navigazione diretta dall'hub
-const _budgetParams = new URLSearchParams(window.location.search);
-const _initBudgetView = _budgetParams.get('view');
-if(_initBudgetView) {
-  // Trova e clicca il tab corretto
-  const tabMap = {ce:0, mensile:1, fin:2, grafici:3};
-  const idx = tabMap[_initBudgetView];
-  const btns = document.querySelectorAll('.tab');
-  if(btns[idx]) btns[idx].click();
-}
-</script>
-
-<!-- ══════════════════════════════════════════════════════════════
-     NARRATORE + SUPERRISPONDITORE — Pannello Laterale AI
-═══════════════════════════════════════════════════════════════ -->
-<style id="ai-lateral-css">
-.ai-fab {
-  position: fixed;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 9998;
-  background: #5b3d8f;
-  color: #fff;
-  border: none;
-  border-radius: 10px 0 0 10px;
-  padding: 1.2rem 0.45rem;
-  cursor: pointer;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  writing-mode: vertical-rl;
-  box-shadow: -3px 0 16px rgba(91,61,143,0.35);
-  transition: all 0.2s;
-  line-height: 1.5;
-}
-.ai-fab:hover { background: #3d2860; }
-.ai-fab.open-state { background: #3d2860; right: 420px; }
-.ai-overlay-bg {
-  position: fixed; inset: 0;
-  background: rgba(26,26,46,0.25);
-  z-index: 9997; opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-  backdrop-filter: blur(1px);
-}
-.ai-overlay-bg.on { opacity: 1; pointer-events: all; }
-.ai-lateral {
-  position: fixed; top: 0; right: -420px;
-  width: 420px; height: 100%;
-  background: #fff;
-  border-left: 1px solid #dde0ee;
-  z-index: 9998;
-  display: flex; flex-direction: column;
-  transition: right 0.35s cubic-bezier(0.22,1,0.36,1);
-  box-shadow: -6px 0 32px rgba(91,61,143,0.18);
-  font-family: 'IBM Plex Mono', monospace;
-}
-.ai-lateral.on { right: 0; }
-.ailat-head {
-  background: linear-gradient(135deg, #5b3d8f 0%, #3d2860 100%);
-  color: #fff; padding: 1rem 1.2rem 0.8rem;
-  flex-shrink: 0; position: relative;
-}
-.ailat-head-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.05rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 0.15rem;
-}
-.ailat-head-ctx { font-size: 0.5rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.16em; }
-.ailat-close { position: absolute; top: 0.8rem; right: 1rem; background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 1rem; }
-.ailat-close:hover { color: #fff; }
-.ailat-pipeline {
-  display: flex; align-items: center; padding: 0.6rem 1.2rem;
-  background: #f8f6fd; border-bottom: 1px solid #dde0ee; flex-shrink: 0;
-}
-.ailat-step {
-  display: flex; align-items: center; gap: 0.35rem;
-  font-size: 0.48rem; text-transform: uppercase; letter-spacing: 0.1em;
-  color: #8888aa; padding: 0.25rem 0.5rem; border-radius: 3px; transition: all 0.2s;
-}
-.ailat-step.active { color: #5b3d8f; background: #ede8f7; font-weight: 600; }
-.ailat-step.done { color: #1e8449; }
-.ailat-step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.ailat-arrow { color: #c8b0e8; font-size: 0.6rem; padding: 0 0.15rem; }
-.ailat-body { flex: 1; overflow-y: auto; padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 1rem; }
-.ailat-block {
-  border-radius: 6px; overflow: hidden; border: 1px solid #ddd0f0;
-}
-.ailat-block.narr { background: #f2eefb; border-color: #ddd0f0; }
-.ailat-block.dom { background: #fff8ee; border-color: #e8d8a0; }
-.ailat-block.risp { background: #fff; border-color: #dde0ee; }
-.ailat-block.user-q { background: #eef0f7; border-color: #c8cce0; }
-.ailat-block-label {
-  padding: 0.4rem 0.8rem; font-size: 0.48rem; text-transform: uppercase;
-  letter-spacing: 0.14em; font-weight: 600; border-bottom: 1px solid inherit;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.ailat-block.narr .ailat-block-label { color: #5b3d8f; background: #ede8f7; border-bottom-color: #ddd0f0; }
-.ailat-block.dom .ailat-block-label { color: #7a5c1e; background: #fdf4d8; border-bottom-color: #e8d8a0; }
-.ailat-block.risp .ailat-block-label { color: #1a1a2e; background: #f4f5f9; border-bottom-color: #dde0ee; }
-.ailat-block.user-q .ailat-block-label { color: #4a4a6a; background: #e0e4f0; border-bottom-color: #c8cce0; }
-.ailat-block-content {
-  padding: 0.8rem; font-family: 'Cormorant Garamond', serif;
-  font-size: 0.88rem; line-height: 1.9; color: #1a1a2e; white-space: pre-wrap;
-}
-.ailat-block.dom .ailat-block-content { font-style: italic; font-size: 0.95rem; color: #3a2800; }
-.ailat-block.user-q .ailat-block-content { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; }
-.ailat-block-content.loading { color: #8888aa; font-style: italic; font-size: 0.75rem; }
-.ailat-block-content.loading::after { content: ''; animation: aidots 1.5s infinite; }
-@keyframes aidots { 0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'} }
-.ailat-user-input {
-  border-top: 1px solid #dde0ee; padding: 0.8rem 1rem;
-  flex-shrink: 0; display: flex; flex-direction: column; gap: 0.5rem; background: #fafaf8;
-}
-.ailat-input-label { font-size: 0.48rem; text-transform: uppercase; letter-spacing: 0.14em; color: #8888aa; }
-.ailat-input-row { display: flex; gap: 0.5rem; }
-.ailat-input {
-  flex: 1; padding: 0.5rem 0.7rem; border: 1px solid #dde0ee; border-radius: 4px;
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: #1a1a2e;
-  background: #fff; outline: none; transition: border-color 0.15s;
-}
-.ailat-input:focus { border-color: #9b7fd4; }
-.ailat-input::placeholder { color: #c0c0d8; }
-.ailat-send {
-  padding: 0.5rem 0.9rem; background: #5b3d8f; color: #fff; border: none;
-  border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem;
-  cursor: pointer; transition: background 0.15s;
-}
-.ailat-send:hover { background: #3d2860; }
-.ailat-reset {
-  padding: 0.28rem 0.6rem; background: none; color: #8888aa;
-  border: 1px solid #dde0ee; border-radius: 3px;
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.48rem;
-  cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em;
-  align-self: flex-end; transition: all 0.15s;
-}
-.ailat-reset:hover { color: #5b3d8f; border-color: #9b7fd4; }
-.ailat-body::-webkit-scrollbar { width: 3px; }
-.ailat-body::-webkit-scrollbar-thumb { background: #c8b0e8; border-radius: 2px; }
-</style>
-
-<button class="ai-fab" id="ai-fab" onclick="toggleAILateral()">◆ AI</button>
-<div class="ai-overlay-bg" id="ai-overlay-bg" onclick="closeAILateral()"></div>
-<div class="ai-lateral" id="ai-lateral">
-  <div class="ailat-head">
-    <div class="ailat-head-title">◆ Narratore · Superrisponditore</div>
-    <div class="ailat-head-ctx" id="ailat-ctx-label">Contesto attivo</div>
-    <button class="ailat-close" onclick="closeAILateral()">✕</button>
-  </div>
-  <div class="ailat-pipeline">
-    <div class="ailat-step" id="ailat-step-1"><div class="ailat-step-dot"></div>Narratore</div>
-    <div class="ailat-arrow">›</div>
-    <div class="ailat-step" id="ailat-step-2"><div class="ailat-step-dot"></div>Domanda</div>
-    <div class="ailat-arrow">›</div>
-    <div class="ailat-step" id="ailat-step-3"><div class="ailat-step-dot"></div>Superrisponditore</div>
-  </div>
-  <div class="ailat-body" id="ailat-body">
-    <div style="text-align:center;padding:2.5rem 1rem;color:#8888aa;font-size:0.63rem;line-height:2">
-      Il Narratore legge il contesto attivo,<br>
-      formula la domanda più penetrante<br>
-      e la passa al Superrisponditore.<br><br>
-      <button onclick="avviaDialogo()" style="background:#5b3d8f;color:#fff;border:none;border-radius:4px;padding:0.65rem 1.5rem;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.14em;cursor:pointer;box-shadow:0 2px 8px rgba(91,61,143,0.3)">▶ Avvia</button>
-    </div>
-  </div>
-  <div class="ailat-user-input">
-    <div class="ailat-input-label">Oppure inserisci la tua domanda</div>
-    <div class="ailat-input-row">
-      <input class="ailat-input" id="ailat-input" type="text" placeholder="La tua domanda specifica..." onkeydown="if(event.key==='Enter'){inviaUserQuestion();}">
-      <button class="ailat-send" onclick="inviaUserQuestion()">▶ Chiedi</button>
-    </div>
-    <button class="ailat-reset" onclick="resetDialogo()">↺ Ricomincia</button>
-  </div>
-</div>
-
-<script id="ai-lateral-js">
-(function(){
-  let _open = false;
-
-  window.toggleAILateral = function(){_open ? closeAILateral() : openAILateral();};
-
-  window.openAILateral = function(){
-    _open = true;
-    document.getElementById('ai-lateral').classList.add('on');
-    document.getElementById('ai-overlay-bg').classList.add('on');
-    document.getElementById('ai-fab').classList.add('open-state');
-    document.getElementById('ailat-ctx-label').textContent = _ctx().titolo;
-  };
-
-  window.closeAILateral = function(){
-    _open = false;
-    document.getElementById('ai-lateral').classList.remove('on');
-    document.getElementById('ai-overlay-bg').classList.remove('on');
-    document.getElementById('ai-fab').classList.remove('open-state');
-  };
-
-  function _ctx(){
-    const av = document.querySelector('.view.active, .tab-content.active, .dtab-content.active');
-    const src = av || document;
-    const titleEl = src.querySelector('.sec-title,.section-title,.page-title,h1,h2') || document.querySelector('.sec-title,.page-title,h1');
-    const titolo = titleEl ? titleEl.textContent.trim() : document.title;
-    const rows = [];
-    src.querySelectorAll('.kpi-cell,.kpi-item,.sum-card,.bench-item').forEach(el=>{
-      const t = [...el.querySelectorAll('*')].filter(n=>!n.children.length&&n.textContent.trim()).map(n=>n.textContent.trim()).filter(t=>t.length<60);
-      if(t.length) rows.push(t.join(' · '));
-    });
-    let tc=0;
-    src.querySelectorAll('tr').forEach(row=>{
-      if(tc>20) return;
-      if(row.classList.contains('sp')||row.classList.contains('spacer')) return;
-      const cells=[...row.querySelectorAll('td,th')].map(c=>c.textContent.trim()).filter(Boolean);
-      if(cells.length>1 && cells.some(c=>/[0-9€%]/.test(c))){rows.push(cells.join(' | '));tc++;}
-    });
-    src.querySelectorAll('.anomaly-title,.alert-msg,.flag-text').forEach(el=>rows.push('[SEGNALE] '+el.textContent.trim().substring(0,100)));
-    src.querySelectorAll('.rating-letter,.rating-pill,.score-circle,.gauge-circle').forEach(el=>rows.push('[SCORE] '+el.textContent.trim()));
-    return {titolo, dati: rows.slice(0,60).join('\n')};
-  }
-
-  window.avviaDialogo = function(){
-    document.getElementById('ailat-body').innerHTML='';
-    _setStep(1);
-    _narra();
-  };
-
-  async function _narra(){
-    const ctx = _ctx();
-    const body = document.getElementById('ailat-body');
-    const b = _addBlock(body,'narr','◆ Narratore — Lettura del contesto',ctx.titolo,'loading','Sto leggendo il contesto');
-    const prompt = 'Sei il Narratore — analista finanziario senior 30 anni esperienza.\nSchermata: "'+ctx.titolo+'"\n\nDATI:\n'+(ctx.dati||'—')+'\n\nDUE PARTI:\n\nPARTE 1 — NARRAZIONE (max 120 parole): Racconta in modo vivido quello che vedi. Non ripetere i numeri — interpretali. Cosa sta succedendo davvero? Parla come un analista che conosce il settore.\n\nPARTE 2: scrivi [DOMANDA] poi LA domanda più penetrante che un CFO farebbe su questo contesto. Precisa, non generica. Tocca il punto critico che i numeri suggeriscono ma non dicono.';
-    try{
-      const r = await _api(prompt);
-      const parts = r.split('[DOMANDA]');
-      b.querySelector('.ailat-block-content').classList.remove('loading');
-      b.querySelector('.ailat-block-content').textContent = parts[0].trim();
-      _setStep(2);
-      if(parts[1]){
-        await _wait(500);
-        const domanda = parts[1].trim();
-        _addBlock(body,'dom','◈ Domanda del Narratore','','',domanda);
-        await _wait(700);
-        _setStep(3);
-        await _super(domanda, ctx, body);
-      }
-    }catch(e){
-      b.querySelector('.ailat-block-content').classList.remove('loading');
-      b.querySelector('.ailat-block-content').style.color='#c0392b';
-      b.querySelector('.ailat-block-content').textContent='Errore: '+e.message;
-    }
-  }
-
-  async function _super(domanda, ctx, body){
-    const b = _addBlock(body,'risp','◆ Superrisponditore','','loading','Sto formulando la risposta');
-    const prompt = 'Sei il Superrisponditore — CFO con 25 anni su PMI italiane. Risposte che cambiano decisioni.\n\nCONTESTO: '+ctx.titolo+'\nDATI: '+ctx.dati.substring(0,2000)+'\n\nDOMANDA:\n'+domanda+'\n\nRispondi con massima profondità qualitativa. Non ripetere i numeri. Vai al cuore. Cause non evidenti, implicazioni future, decisioni concrete. Tono da advisor al CDA: diretto, autorevole, preciso. Max 250 parole. Ogni frase aggiunge valore reale.';
-    try{
-      const r = await _api(prompt);
-      b.querySelector('.ailat-block-content').classList.remove('loading');
-      b.querySelector('.ailat-block-content').textContent = r;
-      b.querySelector('.ailat-block-label span:last-child').textContent = '✓ Completato';
-      _setStep(3,true);
-      document.getElementById('ailat-body').scrollTop = 99999;
-    }catch(e){
-      b.querySelector('.ailat-block-content').classList.remove('loading');
-      b.querySelector('.ailat-block-content').style.color='#c0392b';
-      b.querySelector('.ailat-block-content').textContent='Errore: '+e.message;
-    }
-  }
-
-  window.inviaUserQuestion = function(){
-    const inp = document.getElementById('ailat-input');
-    const q = inp.value.trim();
-    if(!q) return;
-    inp.value='';
-    const body = document.getElementById('ailat-body');
-    const ctx = _ctx();
-    _addBlock(body,'user-q','👤 La tua domanda','','',q);
-    _setStep(3);
-    _super(q, ctx, body);
-  };
-
-  window.resetDialogo = function(){
-    document.getElementById('ailat-body').innerHTML='<div style="text-align:center;padding:2.5rem 1rem;color:#8888aa;font-size:0.63rem;line-height:2">Il Narratore legge il contesto attivo,<br>formula la domanda più penetrante<br>e la passa al Superrisponditore.<br><br><button onclick="avviaDialogo()" style="background:#5b3d8f;color:#fff;border:none;border-radius:4px;padding:0.65rem 1.5rem;font-family:IBM Plex Mono,monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.14em;cursor:pointer">▶ Avvia</button></div>';
-    [1,2,3].forEach(n=>{const el=document.getElementById('ailat-step-'+n);if(el){el.classList.remove('active','done');}});
-  };
-
-  function _addBlock(body,cls,labelL,labelR,contentCls,contentTxt){
-    const d=document.createElement('div');
-    d.className='ailat-block '+cls;
-    d.innerHTML='<div class="ailat-block-label"><span>'+labelL+'</span><span style="color:#8888aa;font-weight:400">'+labelR+'</span></div><div class="ailat-block-content '+(contentCls||'')+'">'+contentTxt+'</div>';
-    body.appendChild(d);
-    body.scrollTop=99999;
-    return d;
-  }
-
-  function _setStep(n,done){
-    for(let i=1;i<=3;i++){
-      const el=document.getElementById('ailat-step-'+i);
-      if(!el) continue;
-      el.classList.remove('active','done');
-      if(i<n) el.classList.add('done');
-      else if(i===n&&!done) el.classList.add('active');
-      else if(i===n&&done) el.classList.add('done');
-    }
-  }
-
-  async function _api(prompt){
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,messages:[{role:'user',content:prompt}]})
-    });
-    const d=await r.json();
-    return d.content?.[0]?.text||'Nessuna risposta.';
-  }
-
-  function _wait(ms){return new Promise(r=>setTimeout(r,ms));}
-})();
-</script>
-</body>
-</html>
+
+class CapsuleManager:
+    """
+    Legge capsule dal DB SQLite e le applica al contesto di trading.
+    Sostituisce CapsuleRuntime + ConfigHotReloader + IntelligenzaAutonoma.
+    Asset-aware. Zero deploy. Loop chiuso con Oracle.
+    """
+
+    RELOAD_INTERVAL = 60  # secondi tra reload DB
+
+    # Floor dinamico per livello capsule
+    FLOOR_STATIC  = 48    # capsule hardcoded storiche
+    FLOOR_AUTO    = 40    # capsule Oracle con evidenza reale
+    FLOOR_ORACLE  = 35    # capsule Oracle priority >= 9 (pattern confermato)
+
+    def __init__(self, db_path: str, asset: str = "BTCUSDC"):
+        self.db_path   = db_path
+        self.asset     = asset
+        self._capsule_file = "capsule_attive.json"  # compatibilità legacy
+
+        self._capsule_cache: list = []   # capsule attive in memoria
+        self._last_reload    = 0.0
+        self._last_db_hash   = ""
+        self._trade_count    = 0
+
+        self._load_capsule()
+        log.info(f"[CM] ✅ CapsuleManager inizializzato — asset={asset} "
+                 f"capsule={len(self._capsule_cache)}")
+
+    # ═══════════════════════════════════════════════════════════════
+    # INTERFACCIA PUBBLICA
+    # ═══════════════════════════════════════════════════════════════
+
+    def valuta(self, ctx: dict) -> dict:
+        """
+        Valuta il contesto corrente contro tutte le capsule attive.
+        Chiamato dal bot ad ogni tick prima dell'entry e nell'exit.
+        
+        ctx keys: momentum, volatility, trend, regime, direction,
+                  drift_pct, oi_stato, oi_carica
+        
+        Ritorna: {
+            blocca: bool,
+            reason: str,
+            soglia_delta: float,   # negativo = abbassa, positivo = alza
+            size_mult: float,
+            profit_lock_min: float,
+        }
+        """
+        # Reload se necessario
+        self._check_reload()
+
+        risultato = {
+            'blocca':          False,
+            'reason':          '',
+            'soglia_delta':    0.0,
+            'size_mult':       1.0,
+            'profit_lock_min': 0.0,
+        }
+
+        ora = time.time()
+        # Ordina per priority desc — capsule più importanti prima
+        capsule_ordinate = sorted(
+            self._capsule_cache,
+            key=lambda c: c.get('priority', 5),
+            reverse=True
+        )
+
+        for cap in capsule_ordinate:
+            # Skip disabilitate o scadute
+            if not cap.get('enabled', True):
+                continue
+            # Non saltiamo per scade_ts — il giudice è il Phantom, non il tempo
+            # Una capsula vive finché il mercato non dimostra che è sbagliata
+
+            # Valuta trigger
+            triggers = cap.get('trigger_parsed', [])
+            if triggers and not self._match_triggers(triggers, ctx):
+                continue
+
+            # Match! Applica azione
+            azione = cap.get('azione_parsed', {})
+            tipo   = azione.get('tipo', '')
+            valore = azione.get('valore', 0)
+            livello   = cap.get('livello', 'STATIC')
+            priority  = cap.get('priority', 5)
+
+            if tipo == 'BLOCCA_ENTRY':
+                risultato['blocca'] = True
+                risultato['reason'] = (
+                    azione.get('motivo') or
+                    cap.get('note', '') or
+                    f"CM_{livello}_{cap.get('id','?')}"
+                )[:80]
+                # BLOCCA ha priorità assoluta — stop
+                log.debug(f"[CM] BLOCCA: {cap.get('id')} ctx={ctx.get('momentum')}|"
+                          f"{ctx.get('volatility')}|{ctx.get('trend')}")
+                break
+
+            elif tipo == 'ALZA_SOGLIA':
+                delta = float(valore) if valore else 0.0
+                risultato['soglia_delta'] += delta
+                log.debug(f"[CM] ALZA_SOGLIA +{delta} da {cap.get('id')}")
+
+            elif tipo == 'ABBASSA_SOGLIA':
+                # Floor dinamico — dipende dal livello della capsule
+                delta = -abs(float(valore)) if valore else 0.0
+                floor = self._get_floor(livello, priority)
+                risultato['soglia_delta'] += delta
+                risultato['_floor'] = floor  # passa il floor al bot
+                log.debug(f"[CM] ABBASSA_SOGLIA {delta} (floor={floor}) da {cap.get('id')}")
+
+            elif tipo == 'ALZA_SOGLIA_USCITA':
+                min_profit = float(valore) if valore else 2.5
+                risultato['profit_lock_min'] = max(
+                    risultato['profit_lock_min'], min_profit
+                )
+                log.debug(f"[CM] PROFIT_LOCK min={min_profit} da {cap.get('id')}")
+
+            # Registra hit
+            self._registra_hit(cap.get('id', ''))
+
+        return risultato
+
+    def get_stats(self) -> dict:
+        """Esposto al heartbeat per dashboard ia_stats."""
+        self._check_reload()
+        ora = time.time()
+        attive   = [c for c in self._capsule_cache
+                    if c.get('enabled') and (not c.get('scade_ts') or c['scade_ts'] > ora)]
+        static   = [c for c in attive if c.get('livello') == 'STATIC']
+        auto     = [c for c in attive if c.get('livello') == 'AUTO']
+        learned  = [c for c in attive if c.get('livello') == 'L2']
+        presto   = [c for c in attive
+                    if c.get('scade_ts') and 0 < c['scade_ts'] - ora < 300]
+        return {
+            'attive':          len(attive),
+            'static':          len(static),
+            'auto':            len(auto),
+            'learned':         len(learned),
+            'scadono_presto':  len(presto),
+            'trade_osservati': self._trade_count,
+        }
+
+    def get_active_capsules(self) -> list:
+        """Per dashboard ia_capsule_attive."""
+        self._check_reload()
+        ora = time.time()
+        result = []
+        for c in self._capsule_cache:
+            if not c.get('enabled', True):
+                continue
+            scade = c.get('scade_ts', 0)
+            # Non filtriamo per scade_ts — il giudice è il Phantom
+            ttl = 0  # non rilevante — vita = fino a prova contraria
+            result.append({
+                'id':          c.get('id', '?'),
+                'tipo':        c.get('tipo', '?'),
+                'livello':     c.get('livello', '?'),
+                'ttl_seconds': ttl,
+                'enabled':     True,
+                'fonte':       'CM_DB',
+                'motivo':      c.get('note', '')[:60],
+                'priority':    c.get('priority', 5),
+            })
+        return result
+
+    def registra_trade(self, trade: dict):
+        """Chiamato al close di ogni trade — aggiorna samples e WR delle capsule."""
+        self._trade_count += 1
+        # Cleanup capsule scadute ogni 50 trade
+        if self._trade_count % 50 == 0:
+            self._cleanup_scadute()
+
+    # ═══════════════════════════════════════════════════════════════
+    # RELOAD DB
+    # ═══════════════════════════════════════════════════════════════
+
+    def _check_reload(self):
+        """Ricarica dal DB se sono passati RELOAD_INTERVAL secondi."""
+        now = time.time()
+        if now - self._last_reload >= self.RELOAD_INTERVAL:
+            self._load_capsule()
+
+    def _load_capsule(self):
+        """Legge tutte le capsule abilitate dal DB."""
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5)
+            conn.row_factory = sqlite3.Row
+            now = time.time()
+
+            # Leggi capsule attive non scadute per questo asset
+            rows = conn.execute("""
+                SELECT id, asset, livello, tipo, trigger_json, azione_json,
+                       priority, enabled, samples, wr, pnl_avg,
+                       created_ts, scade_ts, hits, note
+                FROM capsule
+                WHERE enabled = 1
+                  AND (asset = ? OR asset = 'ALL')
+                ORDER BY priority DESC
+            """, (self.asset,)).fetchall()
+            conn.close()
+
+            capsule = []
+            for r in rows:
+                try:
+                    triggers = json.loads(r['trigger_json'] or '[]')
+                    azione   = json.loads(r['azione_json']  or '{}')
+                except Exception:
+                    triggers, azione = [], {}
+
+                cap = dict(r)
+                cap['trigger_parsed'] = triggers
+                cap['azione_parsed']  = azione
+                capsule.append(cap)
+
+            # Carica anche le capsule dal file JSON legacy (STATIC hardcoded)
+            json_caps = self._load_json_capsule()
+            # Unisci — DB ha priorità su ID identici
+            db_ids = {c['id'] for c in capsule}
+            for jc in json_caps:
+                if jc.get('id') not in db_ids:
+                    capsule.append(jc)
+
+            self._capsule_cache = capsule
+            self._last_reload   = time.time()
+
+            log.info(f"[CM] Ricaricate {len(capsule)} capsule dal DB "
+                     f"({len(json_caps)} da JSON legacy)")
+
+        except Exception as e:
+            log.error(f"[CM] Errore reload DB: {e}")
+            # Mantieni cache precedente
+            self._last_reload = time.time()
+
+    def _load_json_capsule(self) -> list:
+        """Carica capsule legacy da capsule_attive.json (STATIC)."""
+        try:
+            if not os.path.exists(self._capsule_file):
+                return []
+            with open(self._capsule_file) as f:
+                raw = json.load(f)
+            result = []
+            now = time.time()
+            for c in raw:
+                if not c.get('enabled', True):
+                    continue
+                scade = c.get('scade_ts', 0)
+                if scade and scade < now:
+                    continue
+                # Normalizza formato
+                cap = {
+                    'id':       c.get('capsule_id') or c.get('id', '?'),
+                    'asset':    c.get('asset', self.asset),
+                    'livello':  c.get('livello', 'STATIC'),
+                    'tipo':     c.get('tipo', 'VETO'),
+                    'priority': c.get('priority', 5),
+                    'enabled':  True,
+                    'scade_ts': scade or None,
+                    'note':     c.get('descrizione', '')[:80],
+                    'trigger_parsed': c.get('trigger', []),
+                    'azione_parsed':  c.get('azione', {}),
+                }
+                result.append(cap)
+            return result
+        except Exception as e:
+            log.debug(f"[CM] JSON legacy: {e}")
+            return []
+
+    # ═══════════════════════════════════════════════════════════════
+    # TRIGGER MATCHING
+    # ═══════════════════════════════════════════════════════════════
+
+    def _match_triggers(self, triggers: list, ctx: dict) -> bool:
+        """Ritorna True se TUTTI i trigger matchano il contesto."""
+        for t in triggers:
+            # Supporta sia formato Oracle {campo, op, valore}
+            # che formato legacy {param, op, value}
+            campo  = t.get('campo')  or t.get('param',  '')
+            op     = t.get('op',     '==')
+            valore = t.get('valore') or t.get('value')
+
+            if campo not in ctx:
+                continue  # campo non presente = skip (non blocca)
+            if op not in OPS:
+                continue
+
+            try:
+                if not OPS[op](ctx[campo], valore):
+                    return False
+            except Exception:
+                return False
+
+        return True
+
+    # ═══════════════════════════════════════════════════════════════
+    # FLOOR DINAMICO
+    # ═══════════════════════════════════════════════════════════════
+
+    def _get_floor(self, livello: str, priority: int) -> float:
+        """
+        Floor dinamico per ABBASSA_SOGLIA.
+        Capsule Oracle con evidenza reale possono andare sotto 48.
+        """
+        if livello == 'STATIC':
+            return self.FLOOR_STATIC   # 48 — storico senza evidenza live
+        if livello == 'AUTO' and priority >= 9:
+            return self.FLOOR_ORACLE   # 35 — Oracle con pattern confermato
+        if livello == 'AUTO':
+            return self.FLOOR_AUTO     # 40 — Oracle con evidenza reale
+        return self.FLOOR_STATIC       # default conservativo
+
+    # ═══════════════════════════════════════════════════════════════
+    # HIT TRACKING
+    # ═══════════════════════════════════════════════════════════════
+
+    def _registra_hit(self, cap_id: str):
+        """Incrementa hits nel DB — asincrono, non bloccante."""
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=2)
+            conn.execute(
+                "UPDATE capsule SET hits = hits + 1 WHERE id = ?",
+                (cap_id,)
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass  # non critico
+
+    # ═══════════════════════════════════════════════════════════════
+    # CLEANUP
+    # ═══════════════════════════════════════════════════════════════
+
+    def _cleanup_scadute(self):
+        """
+        Il giudice è il Phantom — non il tempo.
+
+        Una capsula BLOCCA_ENTRY muore solo quando:
+          - wr_reale > 50% su samples >= 20 → il mercato è cambiato, il pattern non è più tossico
+        
+        Una capsula ABBASSA_SOGLIA muore quando:
+          - ha portato a perdite (wr_reale < 20% su samples >= 10 con pnl_avg < -1.0)
+        
+        Una capsula non viene MAI rimossa solo per il tempo.
+        Se il contesto non si ripresenta → la capsula dorme in attesa. Quando torna, è pronta.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5)
+
+            # RIMUOVI: capsule BLOCCA che bloccano vincenti — mercato cambiato
+            # WR bloccati > 50% su 20+ samples = stava bloccando trade vincenti
+            conn.execute("""
+                UPDATE capsule
+                SET enabled = 0
+                WHERE livello = 'AUTO'
+                  AND samples >= 20
+                  AND wr > 0.50
+                  AND azione_json LIKE '%BLOCCA_ENTRY%'
+            """)
+
+            # RIMUOVI: capsule ABBASSA_SOGLIA che peggiorano il sistema
+            # Se con quella capsula attiva il bot ha perso sistematicamente
+            conn.execute("""
+                UPDATE capsule
+                SET enabled = 0
+                WHERE livello = 'AUTO'
+                  AND samples >= 10
+                  AND wr < 0.20
+                  AND pnl_avg < -1.0
+                  AND azione_json LIKE '%ABBASSA_SOGLIA%'
+            """)
+
+            conn.commit()
+            conn.close()
+            log.info(f"[CM] Cleanup Phantom-driven eseguito")
+        except Exception as e:
+            log.debug(f"[CM] Cleanup: {e}")
+
+    # ═══════════════════════════════════════════════════════════════
+    # COMPATIBILITÀ LEGACY (CapsuleRuntime interface)
+    # ═══════════════════════════════════════════════════════════════
+
+    def reload(self) -> bool:
+        """Compatibilità CapsuleRuntime."""
+        old_n = len(self._capsule_cache)
+        self._load_capsule()
+        return len(self._capsule_cache) != old_n
+
+    def check_reload(self) -> bool:
+        """Compatibilità ConfigHotReloader."""
+        return self.reload()
+
+    def force_reload(self) -> bool:
+        """Compatibilità ConfigHotReloader."""
+        self._last_reload = 0
+        return self.reload()
+
+    def analizza_e_genera(self) -> list:
+        """Compatibilità IntelligenzaAutonoma — no-op, Oracle fa tutto."""
+        return []
+
+    def registra_trade_ia(self, trade: dict):
+        """Compatibilità IntelligenzaAutonoma."""
+        self.registra_trade(trade)
+
+    @property
+    def capsule_file(self):
+        return self._capsule_file
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# SETUP TABELLA — chiamato al primo avvio se tabella non esiste
+# ═══════════════════════════════════════════════════════════════════════
+
+def ensure_capsule_table(db_path: str):
+    """Crea la tabella capsule se non esiste."""
+    try:
+        conn = sqlite3.connect(db_path, timeout=10)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS capsule (
+                id           TEXT PRIMARY KEY,
+                asset        TEXT DEFAULT 'BTCUSDC',
+                livello      TEXT DEFAULT 'AUTO',
+                tipo         TEXT DEFAULT 'PARAMETRO',
+                trigger_json TEXT DEFAULT '[]',
+                azione_json  TEXT DEFAULT '{}',
+                priority     INTEGER DEFAULT 7,
+                enabled      INTEGER DEFAULT 1,
+                samples      INTEGER DEFAULT 0,
+                wr           REAL    DEFAULT 0.0,
+                pnl_avg      REAL    DEFAULT 0.0,
+                created_ts   REAL,
+                scade_ts     REAL,
+                hits         INTEGER DEFAULT 0,
+                hits_saved   REAL    DEFAULT 0.0,
+                last_hit_ts  REAL    DEFAULT 0,
+                note         TEXT    DEFAULT ''
+            )
+        """)
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logging.error(f"[CM] ensure_capsule_table: {e}")
+        return False
