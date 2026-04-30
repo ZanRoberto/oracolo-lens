@@ -1,7 +1,7 @@
 """
 Oracolo Lens — Piattaforma Intelligence Finanziaria per PMI Italiane
 Software proprietario. Uso consentito solo su licenza contrattuale.
-
+"""
 
 from flask import Flask, send_from_directory, jsonify, request, session
 from flask_cors import CORS
