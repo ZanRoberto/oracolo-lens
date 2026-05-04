@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Albaconsulting S.r.l. · Intelligence Finanziaria</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --viola: #5b3d8f;
+  --viola-dim: #3d2860;
+  --viola-l: #9b7fd4;
+  --viola-bg: #f2eefb;
+  --gold: #b8942a;
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --border: #dde0ee;
+  --text: #1a1a2e;
+  --text2: #4a4a6a;
+  --text3: #8888aa;
+  --red: #c0392b;
+  --green: #1e8449;
+  --sidebar-w: 220px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  height: 48px;
+  background: var(--viola);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1.2rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(91,61,143,0.35);
+  z-index: 200;
+}
+
+.topbar-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+}
+
+.topbar-sub {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.topbar-right {
+  margin-left: auto;
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.4);
+  text-align: right;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-section:last-child { border-bottom: none; }
+
+.sidebar-label {
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text3);
+  padding: 0 1rem 0.5rem;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  color: var(--text2);
+  font-size: 0.62rem;
+  text-decoration: none;
+  user-select: none;
+}
+
+.nav-item:hover {
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-left-color: var(--viola-l);
+}
+
+.nav-item.active {
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-left-color: var(--viola);
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  background: var(--viola-bg);
+  color: var(--viola);
+  border: 1px solid var(--viola-l);
+  flex-shrink: 0;
+}
+
+/* ── CONTENT ── */
+.content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── PANNELLO HOME ── */
+.home-panel {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.home-hero {
+  text-align: center;
+  padding: 3rem 1rem 2.5rem;
+}
+
+.home-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 300;
+  color: var(--viola);
+  margin-bottom: 0.5rem;
+}
+
+.home-sub {
+  font-size: 0.62rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto 2rem;
+}
+
+.module-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.module-card:hover {
+  border-color: var(--viola-l);
+  box-shadow: 0 4px 20px rgba(91,61,143,0.12);
+  transform: translateY(-2px);
+}
+
+.module-card-icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.module-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  color: var(--viola);
+  margin-bottom: 0.3rem;
+}
+
+.module-card-desc {
+  font-size: 0.58rem;
+  color: var(--text3);
+  line-height: 1.7;
+}
+
+.module-card-items {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.module-tag {
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  background: var(--viola-bg);
+  color: var(--viola);
+  border-radius: 2px;
+  border: 1px solid var(--border);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--viola-l); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">◆ Albaconsulting S.r.l.</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-sub">Piattaforma Finanziaria Integrata</div>
+  <div class="topbar-right">
+    <div id="clock"></div>
+    <div style="margin-top:0.1rem">Riservato · Uso Interno</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="nav-item active" onclick="goHome()">
+        <span class="nav-icon">⌂</span>
+        <span>Pannello Principale</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Società</div>
+      <div style="padding:0 0.8rem 0.5rem">
+        <input type="text" id="societa-search" placeholder="Cerca società..." oninput="filterSocieta(this.value)"
+          style="width:100%;padding:0.45rem 0.7rem;border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.58rem;color:var(--text);background:var(--bg);box-sizing:border-box;outline:none">
+      </div>
+      <div id="societa-list"></div>
+      <div class="nav-item" onclick="openNuovaSocieta()" style="color:var(--viola);border-left-color:transparent;margin-top:0.2rem">
+        <span class="nav-icon" style="font-size:1rem">＋</span>
+        <span>Nuova Società</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:auto;padding-top:0.8rem">
+      <div style="padding:0.8rem 1rem;font-size:0.52rem;color:var(--text3);line-height:1.7">
+        ◆ Powered by AI · Oracolo Lens
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CONTENT — solo home, niente iframe -->
+  <div class="content" id="content">
+    <div class="home-panel" id="panel-home">
+      <div class="home-hero">
+        <div class="home-title">Albaconsulting S.r.l.</div>
+        <div class="home-sub">Cerca una società nella barra sinistra per entrare nella sua dimensione operativa</div>
+      </div>
+
+      <div style="max-width:500px;margin:0 auto;text-align:center;padding:3rem 1rem">
+        <div style="font-size:3rem;margin-bottom:1.5rem;opacity:0.3">🔍</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--text2);font-weight:300;margin-bottom:0.8rem">
+          Seleziona una società per iniziare
+        </div>
+        <div style="font-size:0.58rem;color:var(--text3);line-height:1.9">
+          Digita il nome nella barra a sinistra<br>
+          oppure premi <strong style="color:var(--viola)">＋ Nuova Società</strong> per aggiungerne una
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATI SOCIETÀ (sincronizzati con platform_intelligence) ──────────
+var SOCIETA = {
+  rcs: { nome:'RCS Tecnoimpianti S.r.l.', ateco:'43210', settore:'Installazione impianti elettrici', rating:'C', rating_desc:'Rischio Moderato', anni_disponibili:['2020','2021','2022','2023','2024'] },
+  vip: { nome:'Viplastic SRL', ateco:'222', settore:'Fabbricazione articoli in materie plastiche', rating:'A', rating_desc:'Rischio Molto Basso', anni_disponibili:['2018','2019','2020','2021','2022'] },
+  alba: { nome:'Alba Consulting S.r.l.', ateco:'621000', settore:'Attività di programmazione informatica', rating:'B', rating_desc:'Rischio Basso', anni_disponibili:['2020','2021','2022','2023','2024'] }
+};
+
+var RATING_COLOR = { A:'var(--green)', B:'#2e86c1', C:'var(--gold)', D:'#e67e22', E:'var(--red)', '—':'var(--text3)' };
+
+function renderSocietaCards() {
+  // Non mostra nulla all inizializzazione — aspetta che l utente digiti
+  const list = document.getElementById('societa-list');
+  if (list) list.innerHTML = '';
+}
+
+function filterSocieta(q) {
+  const list = document.getElementById('societa-list');
+  if (!list) return;
+  const term = q.toLowerCase().trim();
+
+  // Lista vuota finché non digiti
+  if (!term) {
+    list.innerHTML = '';
+    return;
+  }
+
+  const entries = Object.entries(SOCIETA).filter(([id, s]) => {
+    return s.nome.toLowerCase().includes(term) ||
+           s.ateco.toLowerCase().includes(term) ||
+           (s.settore||'').toLowerCase().includes(term) ||
+           (s.rating||'').toLowerCase().includes(term) ||
+           (s.piva||'').toLowerCase().includes(term);
+  });
+
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="padding:0.5rem 1rem;font-size:0.55rem;color:var(--text3);font-style:italic">Nessun risultato</div>';
+    return;
+  }
+
+  list.innerHTML = entries.map(([id, s]) => {
+    const rCol = RATING_COLOR[s.rating] || 'var(--text3)';
+    const nomeCorto = s.nome.length > 22 ? s.nome.substring(0,22)+'…' : s.nome;
+    const isProv = s._provvisorio ? ' ·<span style="color:var(--viola);font-size:0.42rem"> PROV</span>' : '';
+    return `<div class="nav-item" onclick="goToSocieta('${id}')">
+      <span class="nav-icon" style="font-size:0.7rem;color:${rCol};font-family:'Cormorant Garamond',serif;font-weight:600">${s.rating}</span>
+      <span>${nomeCorto}${isProv}</span>
+    </div>`;
+  }).join('');
+}
+
+function goToSocieta(id) {
+  window.location.href = 'platform_intelligence.html?societa=' + id + '&view=portafoglio';
+}
+
+// ── MODALE NUOVA SOCIETÀ ───────────────────────────────────────────
+function openNuovaSocieta() {
+  document.getElementById('modal-nuova').style.display = 'flex';
+  ['ns-nome','ns-ateco','ns-settore','ns-piva'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ns-rating').value = '—';
+}
+
+function closeModal() {
+  document.getElementById('modal-nuova').style.display = 'none';
+}
+
+function creaSocieta() {
+  const nome = document.getElementById('ns-nome').value.trim().toUpperCase();
+  const ateco = document.getElementById('ns-ateco').value.trim();
+  if (!nome || !ateco) { alert('Ragione Sociale e ATECO obbligatori.'); return; }
+  const rating = document.getElementById('ns-rating').value;
+  const id = nome.toLowerCase().replace(/[^a-z0-9]/g,'_').substring(0,15) + '_' + Date.now().toString(36);
+  SOCIETA[id] = {
+    nome, ateco,
+    settore: document.getElementById('ns-settore').value.trim() || 'Non specificato',
+    rating,
+    rating_desc: {'A':'Rischio Molto Basso','B':'Rischio Basso','C':'Rischio Moderato','D':'Rischio Alto','E':'Rischio Molto Alto','—':'Non disponibile'}[rating]||'—',
+    piva: document.getElementById('ns-piva').value.trim(),
+    anni_disponibili: [],
+    _nuova: true
+  };
+  closeModal();
+  renderSocietaCards();
+  // Naviga direttamente alla nuova società
+  goToSocieta(id);
+}
+
+// ── NAVIGAZIONE ────────────────────────────────────────────────────
+function goTo(url) { window.location.href = url; }
+function goHome() { window.location.href = 'hub.html'; }
+
+// ── OROLOGIO ───────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}) + ' · ' +
+    now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+renderSocietaCards();
+</script>
+<!-- MODALE NUOVA SOCIETÀ -->
+<div id="modal-nuova" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(26,26,46,0.6);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:'IBM Plex Mono',monospace">
+    <div style="background:linear-gradient(135deg,#5b3d8f,#3d2860);color:#fff;padding:1.2rem 1.5rem;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:300">Nuova Società</div>
+        <div style="font-size:0.48rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.15em;margin-top:0.2rem">Anagrafica — poi carichi i dati finanziari</div>
+      </div>
+      <button onclick="closeModal()" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div style="grid-column:1/-1">
+          <label style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:#666;display:block;margin-bottom:0.4rem">Ragione Sociale *</label>
+          <input type="text" id="ns-nome" placeholder="es. ROSSI IMPIANTI S.R.L." style="width:100%;padding:0.5rem;border:1px solid #dde;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:#1a1a2e;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:#666;display:block;margin-bottom:0.4rem">Codice ATECO *</label>
+          <input type="text" id="ns-ateco" placeholder="es. 43210" style="width:100%;padding:0.5rem;border:1px solid #dde;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:#666;display:block;margin-bottom:0.4rem">Rating CreditSafe</label>
+          <select id="ns-rating" style="width:100%;padding:0.5rem;border:1px solid #dde;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem">
+            <option value="—">— Non disponibile</option>
+            <option value="A">A — Rischio Molto Basso</option>
+            <option value="B">B — Rischio Basso</option>
+            <option value="C">C — Rischio Moderato</option>
+            <option value="D">D — Rischio Alto</option>
+            <option value="E">E — Rischio Molto Alto</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:#666;display:block;margin-bottom:0.4rem">Settore</label>
+          <input type="text" id="ns-settore" placeholder="es. Installazione impianti" style="width:100%;padding:0.5rem;border:1px solid #dde;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;box-sizing:border-box">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.12em;color:#666;display:block;margin-bottom:0.4rem">P. IVA</label>
+          <input type="text" id="ns-piva" placeholder="IT12345678901" style="width:100%;padding:0.5rem;border:1px solid #dde;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="background:#f2eefb;border:1px solid #ddd0f0;border-radius:4px;padding:0.7rem;margin-bottom:1.2rem;font-size:0.55rem;color:#5b3d8f">
+        ℹ Dopo aver creato la società entrerai direttamente nella sua pagina — da lì carichi <strong>JSON CreditSafe</strong> o <strong>Bilancio Provvisorio</strong>.
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+        <button onclick="closeModal()" style="background:none;border:1px solid #ddd0f0;color:#5b3d8f;border-radius:4px;padding:0.5rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;cursor:pointer">Annulla</button>
+        <button onclick="creaSocieta()" style="background:#5b3d8f;color:#fff;border:none;border-radius:4px;padding:0.5rem 1.2rem;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;cursor:pointer">＋ Crea e Apri</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
